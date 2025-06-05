@@ -1,13 +1,14 @@
+# [UNCHANGED IMPORTS]
 import os
 import getpass
 from datetime import datetime
 from PyQt5.QtWidgets import (QAction, QFileDialog, QWidget, QVBoxLayout, QLabel, QLineEdit,
-                             QPushButton, QComboBox, QHBoxLayout)
+                             QPushButton, QComboBox, QHBoxLayout, QFormLayout, QLineEdit, QGroupBox, QDialog)
 from PyQt5.QtGui import QIcon, QColor
 from qgis.core import (
     QgsProject, QgsVectorLayer, QgsRasterLayer,
     QgsPrintLayout, QgsLayoutItemMap, QgsReadWriteContext, QgsRectangle,
-    QgsLayoutExporter, QgsLayoutItemRegistry, QgsLineSymbol, QgsSingleSymbolRenderer
+    QgsLayoutExporter, QgsLayoutItemRegistry, QgsLineSymbol, QgsSingleSymbolRenderer, QgsLayoutItemScaleBar, QgsUnitTypes
 )
 from qgis.PyQt.QtXml import QDomDocument
 
@@ -32,7 +33,21 @@ class MapCraftPlugin:
         if self.dialog is None:
             self.dialog = QWidget()
             self.dialog.setWindowTitle("MapCraft - Vattenfall Map Generator")
-            layout = QVBoxLayout()
+
+            # Top-level layout: horizontal split (left = form, right = help)
+            main_layout = QHBoxLayout()
+            self.dialog.setLayout(main_layout)
+
+            # --- Left Side: Input Form ---
+            form_widget = QWidget()
+            form_layout = QVBoxLayout(form_widget)
+
+            # Mode Selector
+            self.mode_combo = QComboBox()
+            self.mode_combo.addItems(["Automated", "Manual (Use QGIS layers)"])
+            self.mode_combo.currentIndexChanged.connect(self.toggle_shp_inputs)
+            form_layout.addWidget(QLabel("Map Generation Mode:"))
+            form_layout.addWidget(self.mode_combo)
 
             # SHP File
             shp_layout = QHBoxLayout()
@@ -42,9 +57,9 @@ class MapCraftPlugin:
             shp_layout.addWidget(QLabel("WTG Layout:"))
             shp_layout.addWidget(self.shp_path)
             shp_layout.addWidget(browse_shp)
-            layout.addLayout(shp_layout)
+            form_layout.addLayout(shp_layout)
 
-            # Optional SHP File (Projekt Fläche)
+            # Optional SHP File
             opt_shp_layout = QHBoxLayout()
             self.opt_shp_path = QLineEdit()
             browse_opt_shp = QPushButton("Browse SHP")
@@ -52,26 +67,32 @@ class MapCraftPlugin:
             opt_shp_layout.addWidget(QLabel("Site boundary:"))
             opt_shp_layout.addWidget(self.opt_shp_path)
             opt_shp_layout.addWidget(browse_opt_shp)
-            layout.addLayout(opt_shp_layout)
+            form_layout.addLayout(opt_shp_layout)
 
             # Project Name
             self.project_name_input = QLineEdit()
-            layout.addWidget(QLabel("Project Name:"))
-            layout.addWidget(self.project_name_input)
+            form_layout.addWidget(QLabel("Project Name:"))
+            form_layout.addWidget(self.project_name_input)
 
-            # State Selector
+            # Map title
+            self.Map_title_input = QLineEdit()
+            self.Map_title_input.setText("Übersichtskarte")
+            form_layout.addWidget(QLabel("Map title:"))
+            form_layout.addWidget(self.Map_title_input)
+
+            # State
             self.state_combo = QComboBox()
-            self.state_combo.addItems(["Rheinland-Pfalz", "Baden-Württemberg", "Niedersachsen", "Schleswig-Holstein"])
-            layout.addWidget(QLabel("Select German State:"))
-            layout.addWidget(self.state_combo)
+            self.state_combo.addItems(["Baden-Württemberg", "Niedersachsen", "Rheinland-Pfalz", "Schleswig-Holstein"])
+            form_layout.addWidget(QLabel("Select German State:"))
+            form_layout.addWidget(self.state_combo)
 
-            # Scale Selector
+            # Scale
             self.scale_combo = QComboBox()
             self.scale_combo.addItems(["25000", "50000"])
-            layout.addWidget(QLabel("Map Scale:"))
-            layout.addWidget(self.scale_combo)
+            form_layout.addWidget(QLabel("Map Scale:"))
+            form_layout.addWidget(self.scale_combo)
 
-            # Output PDF Path
+            # Output Folder
             pdf_layout = QHBoxLayout()
             self.pdf_path = QLineEdit()
             browse_pdf = QPushButton("Browse Folder")
@@ -79,22 +100,65 @@ class MapCraftPlugin:
             pdf_layout.addWidget(QLabel("PDF Output Folder:"))
             pdf_layout.addWidget(self.pdf_path)
             pdf_layout.addWidget(browse_pdf)
-            layout.addLayout(pdf_layout)
+            form_layout.addLayout(pdf_layout)
 
-            # Export Format Selector
+            # Format Selector
             self.format_combo = QComboBox()
             self.format_combo.addItems(["PDF", "PNG"])
-            layout.addWidget(QLabel("Export Format:"))
-            layout.addWidget(self.format_combo)
+            form_layout.addWidget(QLabel("Export Format:"))
+            form_layout.addWidget(self.format_combo)
+
+            # Reset Button
+            reset_button = QPushButton("Reset")
+            reset_button.clicked.connect(self.reset_fields)
+            form_layout.addWidget(reset_button)
 
             # Run Button
             run_button = QPushButton("Run")
             run_button.clicked.connect(self.run_map_generation)
-            layout.addWidget(run_button)
+            form_layout.addWidget(run_button)
 
-            self.dialog.setLayout(layout)
+            # Add form widget to left side
+            main_layout.addWidget(form_widget)
+
+            # --- Right Side: Help Box ---
+            help_group = QGroupBox("Help / Info")
+            help_group.setStyleSheet(
+                "QGroupBox { background-color: white; border: 1px solid lightgray; border-radius: 5px; }")
+
+            help_label = QLabel("""
+            📌 Description of Parameters:
+            • SHP File: Upload the main shapefile for the wind park.
+            • Optional SHP: Upload an optional area outline shapefile.
+            • State: Select the federal state where the wind park is located.
+            • Project Name: This name will be included in the map title and file name.
+            • Scale: Choose the map scale (e.g., 1:25000).
+            • Format: Select PDF or PNG as output format.
+            • Output Folder: Choose where the file will be saved.
+
+            🛈 Click 'Run' to generate the map automatically.
+            """)
+            help_label.setWordWrap(True)
+            help_layout = QVBoxLayout()
+            help_layout.addWidget(help_label)
+            help_group.setLayout(help_layout)
+
+            # Add help box to right side
+            main_layout.addWidget(help_group)
+
+            # Hide optional SHP if needed
+            self.toggle_shp_inputs()
 
         self.dialog.show()
+
+    def toggle_shp_inputs(self):
+        is_automated = self.mode_combo.currentText() == "Automated"
+        self.shp_path.setEnabled(is_automated)
+        self.opt_shp_path.setEnabled(is_automated)
+        # Also disable the browse buttons
+        for button in self.dialog.findChildren(QPushButton):
+            if button.text() in ["Browse SHP"]:
+                button.setEnabled(is_automated)
 
     def browse_shp(self):
         filename, _ = QFileDialog.getOpenFileName(None, "Select SHP File", "", "Shapefiles (*.shp)")
@@ -111,32 +175,29 @@ class MapCraftPlugin:
         if filename:
             self.pdf_path.setText(filename)
 
-    def run_map_generation(self):
-        Layout = self.shp_path.text()
-        Site_Bdry = self.opt_shp_path.text()
-        project_name = self.project_name_input.text()
-        state_selected = self.state_combo.currentText()
-        scale = int(self.scale_combo.currentText())
-        export_format = self.format_combo.currentText()
-        output_folder = self.pdf_path.text()
+    def reset_fields(self):
+        self.shp_path.clear()
+        self.opt_shp_path.clear()
+        self.project_name_input.clear()
+        # self.Map_title_input.clear()
+        self.state_combo.setCurrentIndex(0)
+        self.scale_combo.setCurrentIndex(0)
+        self.pdf_path.clear()
+        self.format_combo.setCurrentIndex(0)
+        self.mode_combo.setCurrentIndex(0)
+        self.toggle_shp_inputs()
 
-        today_name = datetime.today().strftime("%d%m%y")
-        pdf_filename = f"Übersichtskarte_Windpark{project_name}_{today_name}"
-        filename_base = os.path.join(output_folder, pdf_filename)
+    def load_wms_layer(self, state_selected, scale):
+        """
+        Carga un WMS raster layer según el estado y la escala.
 
-        if export_format == "PDF":
-            output_path = os.path.join(self.pdf_path.text(), f"{filename_base}.pdf")
-        else:
-            output_path = os.path.join(self.pdf_path.text(), f"{filename_base}.png")
+        Args:
+            state_selected (str): nombre del estado.
+            scale (int or str): escala, por ejemplo 25000 o 50000.
 
-
-        if not all([Layout, project_name, output_path]):
-            self.iface.messageBar().pushWarning("Warning", "Please complete all fields before running.")
-            return
-
-        layout_path = os.path.join(self.plugin_dir, "Übersichskarte_template_v4.qpt")
-        style_path = os.path.join(self.plugin_dir, "WEA.qml")
-
+        Returns:
+            QgsRasterLayer: la capa WMS cargada si es válida, o None si falla.
+        """
         state_settings = {
             "Baden-Württemberg": {
                 "scales": {
@@ -186,13 +247,13 @@ class MapCraftPlugin:
             "Schleswig-Holstein": {
                 "scales": {
                     "25000": {
-                        "wms_url": "https://www.geodaten-sh.de/ows/dtk25?",
-                        "layer_name": "sh_dtk25",
+                        "wms_url": "https://service.gdi-sh.de/WMS_SH_DTK25_OpenGBD?service=wms&version=1.3.0&request=getCapabilities",
+                        "layer_name": "sh_dtk25_col",
                         "title": "WMS SH DTK25"
                     },
                     "50000": {
-                        "wms_url": "https://www.geodaten-sh.de/ows/dtk50?",
-                        "layer_name": "sh_dtk50",
+                        "wms_url": "https://service.gdi-sh.de/WMS_SH_DTK50_OpenGBD?service=wms&version=1.3.0&request=getCapabilities",
+                        "layer_name": "sh_dtk50_col",
                         "title": "WMS SH DTK50"
                     }
                 },
@@ -200,9 +261,10 @@ class MapCraftPlugin:
             }
         }
 
-        # Load WMS
+        scale_str = str(scale)
+
         state_conf = state_settings[state_selected]
-        scale_conf = state_conf["scales"][str(scale)]
+        scale_conf = state_conf["scales"][scale_str]
 
         wms_url = (
             f"contextualWMSLegend=0&crs=EPSG:25832&dpiMode=7&featureCount=10"
@@ -210,16 +272,62 @@ class MapCraftPlugin:
         )
 
         wms_layer = QgsRasterLayer(wms_url, f"{state_selected} Basemap", "wms")
-        if wms_layer.isValid():
-            wms_layer.setOpacity(0.5)
-            QgsProject.instance().addMapLayer(wms_layer)
-        else:
-            raise Exception(f"Failed to load WMS layer for {state_selected} at scale {scale}")
+        if not wms_layer.isValid():
+            self.iface.messageBar().pushCritical(
+                "MapCraft Plugin", f"No se pudo cargar WMS para {state_selected} a escala {scale_str}"
+            )
+            return None
 
-        shp_layers_ref = [] # Create a list to be used a REF
+        wms_layer.setOpacity(0.5)
+        QgsProject.instance().addMapLayer(wms_layer)
+
+        return wms_layer, state_conf, scale_conf
+
+    def run_map_generation(self):
+        mode = self.mode_combo.currentText()
+        if mode == "Automated":
+            self.run_automated_map()
+        else:
+            self.run_manual_map()
+
+    def run_automated_map(self):
+        mode = self.mode_combo.currentText()
+        Layout = self.shp_path.text()
+        Site_Bdry = self.opt_shp_path.text()
+        project_name = self.project_name_input.text()
+        Map_title = self.Map_title_input.text()
+        state_selected = self.state_combo.currentText()
+        scale = int(self.scale_combo.currentText())
+        export_format = self.format_combo.currentText()
+        output_folder = self.pdf_path.text()
+
+        today_name = datetime.today().strftime("%y%m%d")
+        pdf_filename = f"Windpark_{project_name}_{Map_title}_{today_name}"
+        filename_base = os.path.join(output_folder, pdf_filename)
+
+        if export_format == "PDF":
+            output_path = os.path.join(self.pdf_path.text(), f"{filename_base}.pdf")
+        else:
+            output_path = os.path.join(self.pdf_path.text(), f"{filename_base}.png")
+
+        if mode == "Automated":
+            if not self.shp_path.text() or not project_name or not output_folder:
+                print("Please complete all fields before running.")
+                return
+        else:
+            if not project_name or not output_folder:
+                print("Please complete all fields before running.")
+                return
+
+        layout_path = os.path.join(self.plugin_dir, "Übersichskarte_template_v5.qpt")
+        style_path = os.path.join(self.plugin_dir, "WEA.qml")
+
+        wms_layer, state_conf, scale_conf = self.load_wms_layer(state_selected, scale)
+
+        shp_layers_ref = []  # Create a list to be used a REF
 
         # Load SHP
-        layer_name = os.path.basename(Layout) # This is to get the SHP name in the ref
+        layer_name = os.path.basename(Layout)  # This is to get the SHP name in the ref
         layer = QgsVectorLayer(Layout, layer_name, "ogr")
         if layer.isValid():
             layer.loadNamedStyle(style_path)
@@ -256,7 +364,8 @@ class MapCraftPlugin:
         layout.loadFromTemplate(document, QgsReadWriteContext())
 
         # Map Item
-        map_item = next((item for item in layout.items() if isinstance(item, QgsLayoutItemMap) and item.id() == "Map"), None)
+        map_item = next((item for item in layout.items() if isinstance(item, QgsLayoutItemMap) and item.id() == "Map"),
+                        None)
 
         if map_item:
             map_item.setScale(scale)
@@ -267,6 +376,24 @@ class MapCraftPlugin:
                                   center.x() + map_width_m / 2, center.y() + map_height_m / 2)
             map_item.setExtent(extent)
             map_item.refresh()
+
+            # === SCALE BAR SETUP ===
+            scale_bar_item = layout.itemById('scale')
+            if isinstance(scale_bar_item, QgsLayoutItemScaleBar):
+                scale_bar_item.setStyle('Line Ticks Up')
+                scale_bar_item.setUnits(QgsUnitTypes.DistanceKilometers)
+                scale_bar_item.setNumberOfSegments(2)
+                scale_bar_item.setNumberOfSegmentsLeft(0)
+                scale_bar_item.setLinkedMap(map_item)
+
+                if scale == 25000:
+                    scale_bar_item.setUnitsPerSegment(0.5)  # 0.5 km per segment
+                elif scale == 50000:
+                    scale_bar_item.setUnitsPerSegment(1.0)  # 1.0 km per segment
+
+                scale_bar_item.update()
+
+                scale_bar_item.update()
 
             # === LEGEND SETUP ===
             legend_item = layout.itemById("simbology")  # Make sure your layout legend ID is 'simbology'
@@ -314,14 +441,13 @@ class MapCraftPlugin:
                 elif item.id() == 'label_creator':
                     item.setText(f"Map produced on {today} by {username}")
                 elif item.id() == 'label_title':
-                    item.setText("\u00dcbersichtskarte")
+                    item.setText(f"{Map_title}")
                 elif item.id() == 'label_Windpark':
                     item.setText(f"Windpark {project_name}")
                 elif item.id() == 'label_ref':
                     item.setText(f"Ref: {ref_text}")
                 elif item.id() == 'label_CR':
                     item.setText(f"Hintergrund: ©{copyright_text}")
-
 
         # Export based on selected format
         exporter = QgsLayoutExporter(layout)
@@ -350,3 +476,155 @@ class MapCraftPlugin:
             QgsProject.instance().removeMapLayer(opt_layer)
 
         self.iface.mapCanvas().refresh()
+
+    def run_manual_map(self):
+        # Basic validation
+        project_name = self.project_name_input.text()
+        Map_title = self.Map_title_input.text()
+        state_selected = self.state_combo.currentText()
+        scale = int(self.scale_combo.currentText())
+        export_format = self.format_combo.currentText()
+        output_folder = self.pdf_path.text()
+        today_name = datetime.today().strftime("%y%m%d")
+        pdf_filename = f"Windpark_{project_name}_{Map_title}_{today_name}"
+        output_path = os.path.join(output_folder, f"{pdf_filename}.{export_format.lower()}")
+
+        layout_path = os.path.join(self.plugin_dir, "Übersichskarte_template_v5.qpt")
+
+        # Load template
+        with open(layout_path, 'r') as f:
+            template_content = f.read()
+        document = QDomDocument()
+        document.setContent(template_content)
+        layout = QgsPrintLayout(QgsProject.instance())
+        layout.initializeDefaults()
+        layout.loadFromTemplate(document, QgsReadWriteContext())
+
+        # Get the first layer of the project
+        layers = list(QgsProject.instance().mapLayers().values())
+        layer = layers[0] # Select the first layer
+
+        wms_layer, state_conf, scale_conf = self.load_wms_layer(state_selected, scale)
+
+
+        # # Map item
+        # map_item = next((item for item in layout.items() if isinstance(item, QgsLayoutItemMap) and item.id() == "Map"), None)
+        # if map_item:
+        #     map_item.setScale(scale)
+        #     map_width_m = (map_item.rect().width() * scale) / 1000
+        #     map_height_m = (map_item.rect().height() * scale) / 1000
+        #     center = layer.extent().center()
+        #     extent = QgsRectangle(center.x() - map_width_m / 2, center.y() - map_height_m / 2,
+        #                           center.x() + map_width_m / 2, center.y() + map_height_m / 2)
+        #     # Ensure proper extent is set
+        #     map_item.setExtent(extent)
+        #     map_item.refresh()
+        #
+        # if not map_item:
+        #     self.iface.messageBar().pushCritical('Error', 'Map item with ID "Map" not found in template.')
+        #     return
+
+        # Map item
+        map_item = next((item for item in layout.items() if isinstance(item, QgsLayoutItemMap) and item.id() == "Map"),
+                        None)
+
+        if not map_item:
+            self.iface.messageBar().pushCritical("Error", "Map item with ID 'Map' not found.")
+            return
+
+        # Set scale and extent
+        map_item.setScale(scale)
+        map_width_m = (map_item.rect().width() * scale) / 1000
+        map_height_m = (map_item.rect().height() * scale) / 1000
+        center = layer.extent().center()
+        extent = QgsRectangle(center.x() - map_width_m / 2, center.y() - map_height_m / 2,
+                              center.x() + map_width_m / 2, center.y() + map_height_m / 2)
+        map_item.setExtent(extent)
+
+        # Organize layers: WMS at the bottom
+        all_layers = list(QgsProject.instance().mapLayers().values())
+        vector_layers = [l for l in all_layers if isinstance(l, QgsVectorLayer)]
+        wms_layers = [l for l in all_layers if isinstance(l, QgsRasterLayer) and 'wms' in l.source().lower()]
+        final_order = vector_layers + wms_layers
+        map_item.setLayers(final_order)
+
+        map_item.refresh()
+
+        # === SCALE BAR SETUP ===
+        scale_bar_item = layout.itemById('scale')
+        if isinstance(scale_bar_item, QgsLayoutItemScaleBar):
+            scale_bar_item.setStyle('Line Ticks Up')
+            scale_bar_item.setUnits(QgsUnitTypes.DistanceKilometers)
+            scale_bar_item.setNumberOfSegments(2)
+            scale_bar_item.setNumberOfSegmentsLeft(0)
+            scale_bar_item.setLinkedMap(map_item)
+
+            if scale == 25000:
+                scale_bar_item.setUnitsPerSegment(0.5)  # 0.5 km per segment
+            elif scale == 50000:
+                scale_bar_item.setUnitsPerSegment(1.0)  # 1.0 km per segment
+
+            scale_bar_item.update()
+
+        # Legend setup
+        legend_item = layout.itemById("simbology")
+        if legend_item:
+            legend_item.setLinkedMap(map_item)
+            legend_item.setAutoUpdateModel(False)  # Disable auto update to manually control legend
+
+            legend_model = legend_item.model()
+            root_group = legend_model.rootGroup()
+            root_group.removeAllChildren()  # Clear existing legend entries
+
+            # Add only vector layers (skip raster/WMS)
+            for layer in layers:
+                if isinstance(layer, QgsVectorLayer):
+                    root_group.addLayer(layer)
+
+            # Optional: rename legend entries here if you want
+
+            legend_item.refresh()
+
+        # Create a list to be used a REF
+        shp_layers_ref = []
+        for layer in layers:
+            layer_path = layer.source()
+            layer_name = os.path.basename(layer_path)
+            shp_layers_ref.append(layer_name)
+
+        # Dynamic labels
+        username = getpass.getuser()
+        today = datetime.today().strftime("%d/%m/%y")
+        projection = layer.crs().description()
+        ref_text = " | ".join(shp_layers_ref)
+        copyright_text = state_conf["copyright"]
+
+
+        for item in layout.items():
+            if item.type() == QgsLayoutItemRegistry.LayoutLabel:
+                if item.id() == 'label_proj':
+                    item.setText(f"CRS: {projection}")
+                elif item.id() == 'label_creator':
+                    item.setText(f"Map produced on {today} by {username}")
+                elif item.id() == 'label_title':
+                    item.setText(f"{Map_title}")
+                elif item.id() == 'label_Windpark':
+                    item.setText(f"Windpark {project_name}")
+                elif item.id() == 'label_ref':
+                    item.setText(f"Ref: {ref_text}")
+                elif item.id() == 'label_CR':
+                    item.setText(f"Hintergrund: ©{copyright_text}")
+
+        # Export
+        exporter = QgsLayoutExporter(layout)
+        if export_format == "PDF":
+            result = exporter.exportToPdf(output_path, QgsLayoutExporter.PdfExportSettings())
+        else:
+            settings = QgsLayoutExporter.ImageExportSettings()
+            settings.dpi = 300
+            result = exporter.exportToImage(output_path, settings)
+
+        if result == QgsLayoutExporter.Success:
+            self.iface.messageBar().pushSuccess('Success', f'{export_format} exported successfully!')
+        else:
+            self.iface.messageBar().pushCritical('Error', f'{export_format} export failed.')
