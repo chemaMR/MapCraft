@@ -1,4 +1,3 @@
-# [UNCHANGED IMPORTS]
 import os
 import getpass
 from datetime import datetime
@@ -8,7 +7,7 @@ from PyQt5.QtGui import QIcon, QColor
 from qgis.core import (
     QgsProject, QgsVectorLayer, QgsRasterLayer,
     QgsPrintLayout, QgsLayoutItemMap, QgsReadWriteContext, QgsRectangle,
-    QgsLayoutExporter, QgsLayoutItemRegistry, QgsLineSymbol, QgsSingleSymbolRenderer, QgsLayoutItemScaleBar, QgsUnitTypes
+    QgsLayoutExporter, QgsLayoutItemRegistry, QgsLineSymbol, QgsSingleSymbolRenderer, QgsLayoutItemScaleBar, QgsUnitTypes, QgsLayerTreeLayer
 )
 from qgis.PyQt.QtXml import QDomDocument
 
@@ -506,23 +505,14 @@ class MapCraftPlugin:
 
         wms_layer, state_conf, scale_conf = self.load_wms_layer(state_selected, scale)
 
-
-        # # Map item
-        # map_item = next((item for item in layout.items() if isinstance(item, QgsLayoutItemMap) and item.id() == "Map"), None)
-        # if map_item:
-        #     map_item.setScale(scale)
-        #     map_width_m = (map_item.rect().width() * scale) / 1000
-        #     map_height_m = (map_item.rect().height() * scale) / 1000
-        #     center = layer.extent().center()
-        #     extent = QgsRectangle(center.x() - map_width_m / 2, center.y() - map_height_m / 2,
-        #                           center.x() + map_width_m / 2, center.y() + map_height_m / 2)
-        #     # Ensure proper extent is set
-        #     map_item.setExtent(extent)
-        #     map_item.refresh()
-        #
-        # if not map_item:
-        #     self.iface.messageBar().pushCritical('Error', 'Map item with ID "Map" not found in template.')
-        #     return
+        # Move WMS layer to the bottom in Layer Tree
+        layer_tree = QgsProject.instance().layerTreeRoot()
+        wms_node = layer_tree.findLayer(wms_layer.id())
+        if wms_node:
+            wms_layer_ref = wms_node.layer()  # Keep reference to the QgsMapLayer
+            layer_tree.removeChildNode(wms_node)
+            new_wms_node = QgsLayerTreeLayer(wms_layer_ref)
+            layer_tree.insertChildNode(0, new_wms_node)
 
         # Map item
         map_item = next((item for item in layout.items() if isinstance(item, QgsLayoutItemMap) and item.id() == "Map"),
@@ -550,6 +540,21 @@ class MapCraftPlugin:
 
         map_item.refresh()
 
+        # Get only visible layers (including the WMS layer if visible)
+        layer_tree = QgsProject.instance().layerTreeRoot()
+        visible_layers = []
+
+        for child in layer_tree.children():
+            if isinstance(child, QgsLayerTreeLayer) and child.isVisible():
+                visible_layers.append(child.layer())
+
+        # Layer ordering: WMS/raster layers at the bottom
+        vector_layers = [l for l in visible_layers if isinstance(l, QgsVectorLayer)]
+        final_order = vector_layers + [wms_layer]
+
+        map_item.setLayers(final_order)
+        map_item.refresh()
+
         # === SCALE BAR SETUP ===
         scale_bar_item = layout.itemById('scale')
         if isinstance(scale_bar_item, QgsLayoutItemScaleBar):
@@ -567,21 +572,31 @@ class MapCraftPlugin:
             scale_bar_item.update()
 
         # Legend setup
+
         legend_item = layout.itemById("simbology")
-        if legend_item:
+        if legend_item and map_item:
             legend_item.setLinkedMap(map_item)
-            legend_item.setAutoUpdateModel(False)  # Disable auto update to manually control legend
+            legend_item.setAutoUpdateModel(False)
 
             legend_model = legend_item.model()
             root_group = legend_model.rootGroup()
-            root_group.removeAllChildren()  # Clear existing legend entries
+            root_group.removeAllChildren()
 
-            # Add only vector layers (skip raster/WMS)
-            for layer in layers:
-                if isinstance(layer, QgsVectorLayer):
-                    root_group.addLayer(layer)
+            # Access the current layer tree
+            layer_tree = QgsProject.instance().layerTreeRoot()
 
-            # Optional: rename legend entries here if you want
+            # Add only visible vector layers (skip WMS/raster/invisible)
+            for child in layer_tree.children():
+                if isinstance(child, QgsLayerTreeLayer) and child.isVisible():
+                    layer = child.layer()
+                    if isinstance(layer, QgsVectorLayer):
+                        root_group.addLayer(layer)
+
+                        # Optional: trim long names
+                        trimmed_name = layer.name()[:30] + "..." if len(layer.name()) > 30 else layer.name()
+                        for legend_layer in root_group.findLayers():
+                            if legend_layer.layer() == layer:
+                                legend_layer.setName(trimmed_name)
 
             legend_item.refresh()
 
