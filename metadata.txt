@@ -1,0 +1,8 @@
+[general]
+name=MapCraftPlugin
+description=This plugin adds creates Map for wind projects.
+version=1.0
+qgisMinimumVersion=3.0
+author=Jose Manuel Mendoza
+email=josemanuel.mendozareyes@vattenfall.de
+icon=logo.png
