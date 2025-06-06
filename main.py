@@ -7,7 +7,8 @@ from PyQt5.QtGui import QIcon, QColor
 from qgis.core import (
     QgsProject, QgsVectorLayer, QgsRasterLayer,
     QgsPrintLayout, QgsLayoutItemMap, QgsReadWriteContext, QgsRectangle,
-    QgsLayoutExporter, QgsLayoutItemRegistry, QgsLineSymbol, QgsSingleSymbolRenderer, QgsLayoutItemScaleBar, QgsUnitTypes, QgsLayerTreeLayer
+    QgsLayoutExporter, QgsLayoutItemRegistry, QgsLineSymbol, QgsSingleSymbolRenderer,
+    QgsLayoutItemScaleBar, QgsUnitTypes, QgsLayerTreeLayer, QgsLayoutSize
 )
 from qgis.PyQt.QtXml import QDomDocument
 
@@ -281,6 +282,35 @@ class MapCraftPlugin:
         QgsProject.instance().addMapLayer(wms_layer)
 
         return wms_layer, state_conf, scale_conf
+
+    def adjust_legend_font_size(self, legend_item, max_items=5, base_size=6, min_size=6):
+        # max_items:	Max number of legend entries before font starts shrinking
+        # base_size:	Default font size when entries are ≤ max_items
+        # min_size:	    Minimum font size allowed even if many entries
+
+        from qgis.core import QgsLegendStyle
+
+        if not legend_item:
+            return
+
+        # Count the total number of symbol entries
+        model = legend_item.model()
+        root_group = model.rootGroup()
+        count = sum(len(group.children()) for group in root_group.children())
+
+        # Reduce font size if too many entries
+        if count > max_items:
+            scale_factor = max(min_size, base_size - (count - max_items) // 2)
+        else:
+            scale_factor = base_size
+
+        # Apply font size to legend styles
+        for style in [QgsLegendStyle.Group, QgsLegendStyle.Subgroup, QgsLegendStyle.SymbolLabel]:
+            font = legend_item.styleFont(style)
+            font.setPointSize(scale_factor)
+            legend_item.setStyleFont(style, font)
+
+        legend_item.update()
 
     def run_map_generation(self):
         mode = self.mode_combo.currentText()
@@ -592,13 +622,12 @@ class MapCraftPlugin:
                     if isinstance(layer, QgsVectorLayer):
                         root_group.addLayer(layer)
 
-                        # Optional: trim long names
-                        trimmed_name = layer.name()[:30] + "..." if len(layer.name()) > 30 else layer.name()
-                        for legend_layer in root_group.findLayers():
-                            if legend_layer.layer() == layer:
-                                legend_layer.setName(trimmed_name)
 
             legend_item.refresh()
+
+            # Adjust font size based on number of legend entries
+            legend_item.attemptResize(QgsLayoutSize(55, 100))
+            self.adjust_legend_font_size(legend_item)
 
         # Create a list to be used a REF
         shp_layers_ref = []
