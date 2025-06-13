@@ -80,6 +80,12 @@ class MapCraftPlugin:
             form_layout.addWidget(QLabel("Map title:"))
             form_layout.addWidget(self.Map_title_input)
 
+            # Base Map
+            self.basemap_combo = QComboBox()
+            self.basemap_combo.addItems(["Topographic", "Satellite"])
+            form_layout.addWidget(QLabel("Select Base Map type:"))
+            form_layout.addWidget(self.basemap_combo)
+
             # State
             self.state_combo = QComboBox()
             self.state_combo.addItems(["Baden-Württemberg", "Niedersachsen", "Rheinland-Pfalz", "Schleswig-Holstein"])
@@ -88,7 +94,7 @@ class MapCraftPlugin:
 
             # Scale
             self.scale_combo = QComboBox()
-            self.scale_combo.addItems(["25000", "50000"])
+            self.scale_combo.addItems(["10000", "25000", "50000"])
             form_layout.addWidget(QLabel("Map Scale:"))
             form_layout.addWidget(self.scale_combo)
 
@@ -187,101 +193,178 @@ class MapCraftPlugin:
         self.mode_combo.setCurrentIndex(0)
         self.toggle_shp_inputs()
 
-    def load_wms_layer(self, state_selected, scale):
+    def load_wms_layer(self, state_selected, scale, basemap_type):
         """
-        Carga un WMS raster layer según el estado y la escala.
+        Loads a WMS or XYZ raster layer based on the selected state, scale, and basemap type.
 
         Args:
-            state_selected (str): nombre del estado.
-            scale (int or str): escala, por ejemplo 25000 o 50000.
+            state_selected (str): Name of the German federal state.
+            scale (int or str): Map scale, e.g., 10000, 25000, 50000.
+            basemap_type (str): Either "Topographic" or "Satellite".
 
         Returns:
-            QgsRasterLayer: la capa WMS cargada si es válida, o None si falla.
+            Tuple(QgsRasterLayer, dict or None, dict or None): The loaded raster layer, config (state or satellite), and scale config (or None for Satellite).
         """
+
+        # --- State-specific topographic WMS configurations ---
         state_settings = {
             "Baden-Württemberg": {
                 "scales": {
+                    "10000": {
+                        "wms_url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DTK_10_K?",
+                        "layer_name": "RDS.LY_DTK10K_COL",
+                        "title": "DTK10 Color"
+                    },
                     "25000": {
                         "wms_url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DTK_25_K_A?",
                         "layer_name": "RDS_LY_DTK25K_COL",
-                        "title": "DTK25 Farbkombination"
+                        "title": "DTK25 Color"
                     },
                     "50000": {
                         "wms_url": "https://owsproxy.lgl-bw.de/owsproxy/ows/WMS_LGL-BW_ATKIS_DTK_50_K_A?",
                         "layer_name": "RDS_LY_DTK50K_COL",
-                        "title": "DTK50 Farbkombination"
+                        "title": "DTK50 Color"
                     }
                 },
-                "copyright": "LGL-BW (2025)"
+                "copyright": "LGL-BW(2025) Datenlizenz Deutschland-Namensnennung-Version 2.0, www.lgl-bw.de"
             },
             "Rheinland-Pfalz": {
                 "scales": {
+                    "10000": {
+                        "wms_url": "https://geo4.service24.rlp.de/wms/rp_dtk10.fcgi?",
+                        "layer_name": "rp_dtk10",
+                        "title": "DTK10 RLP"
+                    },
                     "25000": {
                         "wms_url": "https://geo4.service24.rlp.de/wms/rp_dtk25.fcgi?",
                         "layer_name": "rp_dtk25",
-                        "title": "WMS RP DTK25"
+                        "title": "DTK25 RLP"
                     },
                     "50000": {
                         "wms_url": "https://geo4.service24.rlp.de/wms/rp_dtk50.fcgi?",
                         "layer_name": "rp_dtk50",
-                        "title": "WMS RP DTK50"
+                        "title": "DTK50 RLP"
+                    },
+                    "satellite": {
+                        "wms_url": "https://www.geoportal.rlp.de/mapbender/php/wms.php?layer_id=61675",
+                        "layer_name": "dop20",
+                        "title": "RLP DOP20"
                     }
                 },
                 "copyright": "GeoBasis-DE/LVermGeoRP (2005) dl-de/by-2-0"
             },
             "Niedersachsen": {
                 "scales": {
+                    "10000": {},  # Not available
                     "25000": {
                         "wms_url": "https://www.geobasisdaten.niedersachsen.de/wms/dtk25?",
                         "layer_name": "DTK25",
-                        "title": "WMS NI DTK25"
+                        "title": "DTK25 NI"
                     },
                     "50000": {
                         "wms_url": "https://www.geobasisdaten.niedersachsen.de/wms/dtk50?",
                         "layer_name": "DTK50",
-                        "title": "WMS NI DTK50"
+                        "title": "DTK50 NI"
                     }
                 },
                 "copyright": "LGLN 2025"
             },
             "Schleswig-Holstein": {
                 "scales": {
+                    "10000": {
+                        "wms_url": "https://service.gdi-sh.de/WMS_SH_DTK5_OpenGBD?",
+                        "layer_name": "sh_dtk5_col",
+                        "title": "DTK5 SH"
+                    },
                     "25000": {
-                        "wms_url": "https://service.gdi-sh.de/WMS_SH_DTK25_OpenGBD?service=wms&version=1.3.0&request=getCapabilities",
+                        "wms_url": "https://service.gdi-sh.de/WMS_SH_DTK25_OpenGBD?",
                         "layer_name": "sh_dtk25_col",
-                        "title": "WMS SH DTK25"
+                        "title": "DTK25 SH"
                     },
                     "50000": {
-                        "wms_url": "https://service.gdi-sh.de/WMS_SH_DTK50_OpenGBD?service=wms&version=1.3.0&request=getCapabilities",
+                        "wms_url": "https://service.gdi-sh.de/WMS_SH_DTK50_OpenGBD?",
                         "layer_name": "sh_dtk50_col",
-                        "title": "WMS SH DTK50"
+                        "title": "DTK50 SH"
+                    },
+                    "satellite": {
+                        "wms_url": "https://dienste.gdi-sh.de/WMS_SH_DOP20col_OpenGBD?",
+                        "layer_name": "sh_dop20_col",
+                        "title": "DOP20 SH"
                     }
                 },
                 "copyright": "GeoBasis-DE/LVermGeo 2025 SH/CC BY 4.0"
             }
         }
 
+        # --- Global Satellite (XYZ) Basemap ---
+        satellite_settings = {
+            "basemap": {
+                "zmin": 0,
+                "zmax": 19,
+                "crs": "EPSG:3857",
+                "url": "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+                "title": "World Imagery"
+            },
+            "copyright": "Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+        }
+
         scale_str = str(scale)
 
-        state_conf = state_settings[state_selected]
-        scale_conf = state_conf["scales"][scale_str]
+        # --- Satellite Mode ---
+        if basemap_type == "Satellite":
+            satellite_conf = satellite_settings["basemap"]
+            url = satellite_conf["url"]
+            zmin = satellite_conf["zmin"]
+            zmax = satellite_conf["zmax"]
+            crs = satellite_conf["crs"]
+            title = satellite_conf["title"]
 
-        wms_url = (
-            f"contextualWMSLegend=0&crs=EPSG:25832&dpiMode=7&featureCount=10"
-            f"&format=image/png&layers={scale_conf['layer_name']}&styles=&url={scale_conf['wms_url']}"
-        )
+            encoded_url = url.replace("=", "%3D").replace("&", "%26")
+            uri = f"type=xyz&url={encoded_url}&zmin={zmin}&zmax={zmax}&crs={crs}"
 
-        wms_layer = QgsRasterLayer(wms_url, f"{state_selected} Basemap", "wms")
-        if not wms_layer.isValid():
-            self.iface.messageBar().pushCritical(
-                "MapCraft Plugin", f"No se pudo cargar WMS para {state_selected} a escala {scale_str}"
+            layer = QgsRasterLayer(uri, title, "wms")
+            if not layer.isValid():
+                self.iface.messageBar().pushCritical("MapCraft Plugin", "Could not load satellite basemap.")
+                return None, None, None
+
+            # layer.setOpacity(0.2)
+            QgsProject.instance().addMapLayer(layer)
+
+            # Return satellite settings so they can be used in layout updates
+            return layer, satellite_settings, None
+
+        # --- Topographic Mode ---
+        elif basemap_type == "Topographic":
+            state_conf = state_settings.get(state_selected)
+            if not state_conf:
+                self.iface.messageBar().pushCritical("MapCraft Plugin",
+                                                     f"No configuration found for state '{state_selected}'.")
+                return None, None, None
+
+            scale_conf = state_conf["scales"].get(scale_str)
+            if not scale_conf:
+                self.iface.messageBar().pushCritical("MapCraft Plugin",
+                                                     f"No topographic WMS for {state_selected} at scale {scale_str}.")
+                return None, None, None
+
+            wms_url = (
+                f"contextualWMSLegend=0&crs=EPSG:25832&dpiMode=7&featureCount=10"
+                f"&format=image/png&layers={scale_conf['layer_name']}&styles=&url={scale_conf['wms_url']}"
             )
-            return None
 
-        wms_layer.setOpacity(0.5)
-        QgsProject.instance().addMapLayer(wms_layer)
+            wms_layer = QgsRasterLayer(wms_url, f"{state_selected} Basemap", "wms")
+            if not wms_layer.isValid():
+                self.iface.messageBar().pushCritical("MapCraft Plugin",
+                                                     f"Could not load WMS for {state_selected} at scale {scale_str}.")
+                return None, None, None
 
-        return wms_layer, state_conf, scale_conf
+            wms_layer.setOpacity(0.5)
+            QgsProject.instance().addMapLayer(wms_layer)
+            return wms_layer, state_conf, scale_conf
+
+        else:
+            self.iface.messageBar().pushCritical("MapCraft Plugin", f"Unknown basemap type: {basemap_type}")
+            return None, None, None
 
     def adjust_legend_font_size(self, legend_item, max_items=5, base_size=6, min_size=6):
         # max_items:	Max number of legend entries before font starts shrinking
@@ -320,18 +403,18 @@ class MapCraftPlugin:
             self.run_manual_map()
 
     def run_automated_map(self):
-        mode = self.mode_combo.currentText()
         Layout = self.shp_path.text()
         Site_Bdry = self.opt_shp_path.text()
         project_name = self.project_name_input.text()
         Map_title = self.Map_title_input.text()
+        basemap_type = self.basemap_combo.currentText()
         state_selected = self.state_combo.currentText()
         scale = int(self.scale_combo.currentText())
         export_format = self.format_combo.currentText()
         output_folder = self.pdf_path.text()
 
-        today_name = datetime.today().strftime("%y%m%d")
-        pdf_filename = f"Windpark_{project_name}_{Map_title}_{today_name}"
+        today_name = datetime.today().strftime("%Y%m%d")
+        pdf_filename = f"{today_name}_Windpark_{project_name}_{Map_title}"
         filename_base = os.path.join(output_folder, pdf_filename)
 
         if export_format == "PDF":
@@ -339,19 +422,16 @@ class MapCraftPlugin:
         else:
             output_path = os.path.join(self.pdf_path.text(), f"{filename_base}.png")
 
-        if mode == "Automated":
-            if not self.shp_path.text() or not project_name or not output_folder:
-                print("Please complete all fields before running.")
-                return
-        else:
-            if not project_name or not output_folder:
-                print("Please complete all fields before running.")
-                return
+
+        if not self.shp_path.text() or not project_name or not output_folder:
+            print("Please complete all fields before running.")
+            return
+
 
         layout_path = os.path.join(self.plugin_dir, "Übersichskarte_template_v5.qpt")
         style_path = os.path.join(self.plugin_dir, "WEA.qml")
 
-        wms_layer, state_conf, scale_conf = self.load_wms_layer(state_selected, scale)
+        wms_layer, conf_dict, scale_conf = self.load_wms_layer(state_selected, scale, basemap_type)
 
         shp_layers_ref = []  # Create a list to be used a REF
 
@@ -415,12 +495,12 @@ class MapCraftPlugin:
                 scale_bar_item.setNumberOfSegmentsLeft(0)
                 scale_bar_item.setLinkedMap(map_item)
 
-                if scale == 25000:
+                if scale == 10000:
+                    scale_bar_item.setUnitsPerSegment(0.25)
+                elif scale == 25000:
                     scale_bar_item.setUnitsPerSegment(0.5)  # 0.5 km per segment
                 elif scale == 50000:
                     scale_bar_item.setUnitsPerSegment(1.0)  # 1.0 km per segment
-
-                scale_bar_item.update()
 
                 scale_bar_item.update()
 
@@ -461,7 +541,10 @@ class MapCraftPlugin:
         today = datetime.today().strftime("%d/%m/%y")
         username = getpass.getuser()
         ref_text = " | ".join(shp_layers_ref)
-        copyright_text = state_conf["copyright"]
+        if basemap_type == "Topographic" and conf_dict:
+            copyright_text = conf_dict.get("copyright", "")
+        elif basemap_type == "Satellite" and conf_dict:
+            copyright_text = conf_dict.get("copyright", "")
 
         for item in layout.items():
             if item.type() == QgsLayoutItemRegistry.LayoutLabel:
@@ -511,11 +594,12 @@ class MapCraftPlugin:
         project_name = self.project_name_input.text()
         Map_title = self.Map_title_input.text()
         state_selected = self.state_combo.currentText()
+        basemap_type = self.basemap_combo.currentText()
         scale = int(self.scale_combo.currentText())
         export_format = self.format_combo.currentText()
         output_folder = self.pdf_path.text()
-        today_name = datetime.today().strftime("%y%m%d")
-        pdf_filename = f"Windpark_{project_name}_{Map_title}_{today_name}"
+        today_name = datetime.today().strftime("%Y%m%d")
+        pdf_filename = f"{today_name}_Windpark_{project_name}_{Map_title}"
         output_path = os.path.join(output_folder, f"{pdf_filename}.{export_format.lower()}")
 
         layout_path = os.path.join(self.plugin_dir, "Übersichskarte_template_v5.qpt")
@@ -533,7 +617,7 @@ class MapCraftPlugin:
         layers = list(QgsProject.instance().mapLayers().values())
         layer = layers[0] # Select the first layer
 
-        wms_layer, state_conf, scale_conf = self.load_wms_layer(state_selected, scale)
+        wms_layer, conf_dict, scale_conf = self.load_wms_layer(state_selected, scale, basemap_type)
 
         # Move WMS layer to the bottom in Layer Tree
         layer_tree = QgsProject.instance().layerTreeRoot()
@@ -631,17 +715,25 @@ class MapCraftPlugin:
 
         # Create a list to be used a REF
         shp_layers_ref = []
-        for layer in layers:
-            layer_path = layer.source()
-            layer_name = os.path.basename(layer_path)
-            shp_layers_ref.append(layer_name)
+        layer_tree = QgsProject.instance().layerTreeRoot()
+
+        for child in layer_tree.children():
+            if isinstance(child, QgsLayerTreeLayer) and child.isVisible():
+                layer = child.layer()
+                if isinstance(layer, QgsVectorLayer):
+                    layer_path = layer.source()
+                    layer_name = os.path.basename(layer_path)
+                    shp_layers_ref.append(layer_name)
 
         # Dynamic labels
         username = getpass.getuser()
         today = datetime.today().strftime("%d/%m/%y")
         projection = layer.crs().description()
         ref_text = " | ".join(shp_layers_ref)
-        copyright_text = state_conf["copyright"]
+        if basemap_type == "Topographic" and conf_dict:
+            copyright_text = conf_dict.get("copyright", "")
+        elif basemap_type == "Satellite" and conf_dict:
+            copyright_text = conf_dict.get("copyright", "")
 
 
         for item in layout.items():
