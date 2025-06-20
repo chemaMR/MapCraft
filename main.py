@@ -2,9 +2,11 @@ import os
 import getpass
 from datetime import datetime
 from PyQt5.QtWidgets import (QAction, QFileDialog, QWidget, QVBoxLayout, QLabel, QLineEdit,
-                             QPushButton, QComboBox, QHBoxLayout, QFormLayout, QLineEdit, QGroupBox, QDialog)
+                             QPushButton, QComboBox, QHBoxLayout, QFormLayout, QLineEdit,
+                             QGroupBox, QDialog, QScrollArea, QWidget)
 from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtCore import Qt
+from qgis.utils import iface
 from qgis.core import (
     QgsProject, QgsVectorLayer, QgsRasterLayer,
     QgsPrintLayout, QgsLayoutItemMap, QgsReadWriteContext, QgsRectangle,
@@ -72,6 +74,12 @@ class MapCraftPlugin:
             WTG_layout_Buff.addWidget(browse_wtgBuff_shp)
             form_layout.addLayout(WTG_layout_Buff)
 
+            # WTG Buffer Size Input (initially hidden)
+            self.wtg_buff_size_input = QLineEdit()
+            self.wtg_buff_size_input.setPlaceholderText("Enter WTG buffer size (e.g. 87.5)")
+            self.wtg_buff_size_input.hide()
+            form_layout.addWidget(self.wtg_buff_size_input)
+
             # Site boundary
             site_boundary = QHBoxLayout()
             self.sibdry_path = QLineEdit()
@@ -91,6 +99,12 @@ class MapCraftPlugin:
             site_boundary_Buff.addWidget(self.sibdry_buff_path)
             site_boundary_Buff.addWidget(browse_sitebdryBuff_shp)
             form_layout.addLayout(site_boundary_Buff)
+
+            # Site Boundary Buffer Size Input
+            self.sibdry_buff_size_input = QLineEdit()
+            self.sibdry_buff_size_input.setPlaceholderText("Enter Site boundary buffer size (e.g. 100)")
+            self.sibdry_buff_size_input.hide()
+            form_layout.addWidget(self.sibdry_buff_size_input)
 
             # Wind priority area
             priority_area = QHBoxLayout()
@@ -113,6 +127,12 @@ class MapCraftPlugin:
             form_layout.addWidget(QLabel("Map title:"))
             form_layout.addWidget(self.Map_title_input)
 
+            # Layout Size Selector
+            self.layout_size_combo = QComboBox()
+            self.layout_size_combo.addItems(["A3", "A4", ])  # Add more if needed
+            form_layout.addWidget(QLabel("Map layout size:"))
+            form_layout.addWidget(self.layout_size_combo)
+
             # Base Map
             self.basemap_combo = QComboBox()
             self.basemap_combo.addItems(["Topographic", "Satellite"])
@@ -127,7 +147,7 @@ class MapCraftPlugin:
 
             # Scale
             self.scale_combo = QComboBox()
-            self.scale_combo.addItems(["10000","15000", "25000", "50000"])
+            self.scale_combo.addItems(["25000", "10000","15000", "50000"])
             form_layout.addWidget(QLabel("Map scale:"))
             form_layout.addWidget(self.scale_combo)
 
@@ -161,25 +181,81 @@ class MapCraftPlugin:
             main_layout.addWidget(form_widget)
 
             # --- Right Side: Help Box ---
-            help_group = QGroupBox("Help / Info")
+            help_group = QGroupBox("Do you need some help?:")
             help_group.setStyleSheet(
                 "QGroupBox { background-color: white; border: 1px solid lightgray; border-radius: 5px; }")
 
             help_label = QLabel("""
-            📌 Description of Parameters:
-            • SHP File: Upload the main shapefile for the wind park.
-            • Optional SHP: Upload an optional area outline shapefile.
-            • State: Select the federal state where the wind park is located.
-            • Project Name: This name will be included in the map title and file name.
-            • Scale: Choose the map scale (e.g., 1:25000).
-            • Format: Select PDF or PNG as output format.
-            • Output Folder: Choose where the file will be saved.
+                <b>Description of Parameters</b><br><br><br>
 
-            🛈 Click 'Run' to generate the map automatically.
+                <b>Map Generation Mode</b> <i>(Required)</i> Select how the map will be created:<br>
+                
+                <ul>
+                    <li><b>Automatic:</b> Uses predefined symbology with minimal input.</li>
+                    <li><b>Manual:</b> Allows full control over symbology and labels using user-supplied shapefiles.<br>
+                    In Manual mode, users must upload their own shapefiles to define map content.</li>
+                </ul><br>
+
+                <b>Input Layers</b><br>
+                <ul>
+                    <li><b>WTG Layout:</b> <i>(Required)</i> Wind Turbine Generator layout.<br>
+                    <span style="color:red;">IMPORTANT:</span> This shapefile should be the one produced by the GIS team.<br>
+                    The tool requires the fields [TRB_ID] and [LAYOUT] to generate map legends and labels. If these fields are missing, the tool will fail.</li><br>
+
+                    <li><b>WTG Buffer Layout:</b> <i>(Optional)</i> Shapefile representing a buffer area around the WTGs. If a Shapefile is provided, the buffer area distance must be also registered (e.g., 87.5, 90).</li><br>
+
+                    <li><b>Site Boundary:</b> <i>(Optional)</i> Shapefile defining the project site boundary.</li><br>
+
+                    <li><b>Site Boundary Buffer:</b> <i>(Optional)</i> Shapefile defining a buffer around the site boundary. If a Shapefile is provided, the buffer area distance must be also registered (e.g., 87.5, 90).</li><br>
+                    <li><b>Wind Priority Area:</b> <i>(Optional)</i> Wind priority areas relevant to the project.</li>
+                </ul><br>
+
+                <b>Project Metadata</b><br>
+                <ul>
+                    <li><b>Project Name:</b> <i>(Required)</i> Name of the project (e.g., Winterlingen).</li><br>
+                    <li><b>Map Title:</b> <i>(Required)</i> Custom title to be displayed on the exported map.</li>
+                </ul><br>
+
+                <b>Map Settings</b><br>
+                <ul>
+                    <li><b>Map Layout Size:</b> <i>(Required)</i> Select the paper size for the map layout (e.g., A3, A4).</li><br>
+                    <li><b>Select Base Map Type:</b> <i>(Required)</i> Select the background map to use (e.g., topographic, satellite).</li><br>
+                    <li><b>Select German State:</b> <i>(Required)</i> Select the federal state where the project is located. This determines which WMS basemap will be used.</li><br>
+                    <li><b>Map Scale:</b> <i>(Required)</i> Define the desired map scale (e.g., 1:25,000 or 1:50,000).</li>
+                </ul><br>
+
+                <b>Output Options</b><br>
+                <ul>
+                    <li><b>PDF Output Folder:</b> <i>(Required)</i> Select the folder where the exported map (PDF/PNG) will be saved.</li><br>
+                    <li><b>Export Format:</b> <i>(Required)</i> Select the format of the output file (PDF or PNG).</li>
+                </ul><br>
+
+                <b>Actions</b><br>
+                <ul>
+                    <li><b>Reset:</b> Clears all fields and selections in the form.</li><br>
+                    <li><b>Run:</b> Starts the map generation process.</li>
+                </ul><br>
+                
+                <b>Need more help? Keine Sorgen</b><br>
+                <ul>
+                    <li><a href="https://vattenfall.sharepoint.com/sites/Wind_OnDpt_WNMX/GISTeam/SitePages/Home.aspx" style="color:blue;" target="_blank">Open SharePoint Documentation</a></li><br>
+                    <li><a href="https://emea01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fapps.powerapps.com%2Fplay%2Fe%2Fdefault-f8be18a6-f648-4a47-be73-86d6c5c6604d%2Fa%2Fffaf49bb-9017-4ae2-843b-a1042eb8cf5f%3FtenantId%3Df8be18a6-f648-4a47-be73-86d6c5c6604d%26source%3Demail&data=05%7C02%7Cjosemanuel.mendozareyes%40vattenfall.de%7C22154ba212974807228108dd357c43a9%7Cf8be18a6f6484a47be7386d6c5c6604d%7C0%7C0%7C638725529994715332%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=rFa7XdY4gkeD7TfZfVM%2Fe20Xt5phu4FMNC4NV0j%2FdUY%3D&reserved=0" style="color:blue;" target="_blank">Report a Problem (GIS Ticket System)</a></li>
+                </ul>
             """)
+
             help_label.setWordWrap(True)
+            help_label.setTextFormat(Qt.RichText)
+            help_label.setTextInteractionFlags(Qt.TextBrowserInteraction)
+            help_label.setOpenExternalLinks(True)
+
+            # Add scroll area
+            scroll_area = QScrollArea()
+            scroll_area.setWidgetResizable(True)
+            scroll_area.setWidget(help_label)
+            scroll_area.setFixedHeight(550) # Adjust height as needed
+
             help_layout = QVBoxLayout()
-            help_layout.addWidget(help_label)
+            help_layout.addWidget(scroll_area)  # Add scroll area instead of the label
             help_group.setLayout(help_layout)
 
             # Add help box to right side
@@ -211,6 +287,9 @@ class MapCraftPlugin:
         filename, _ = QFileDialog.getOpenFileName(None, "Select SHP File", "", "Shapefiles (*.shp)")
         if filename:
             self.wtg_buff_path.setText(filename)
+            self.wtg_buff_size_input.show() # if the user add a SHP, the need to add the buffer distance
+        else:
+            self.wtg_buff_size_input.hide() # if the user does not add a SHP, the option does not show up
 
     def browse_sitebdry_shp(self):
         filename, _ = QFileDialog.getOpenFileName(None, "Select SHP File", "", "Shapefiles (*.shp)")
@@ -221,6 +300,9 @@ class MapCraftPlugin:
         filename, _ = QFileDialog.getOpenFileName(None, "Select SHP File", "", "Shapefiles (*.shp)")
         if filename:
             self.sibdry_buff_path.setText(filename)
+            self.sibdry_buff_size_input.show()  # if the user add a SHP, the need to add the buffer distance
+        else:
+            self.sibdry_buff_size_input.hide()  # if the user does not add a SHP, the option does not show up
 
     def browse_priority_area_shp(self):
         filename, _ = QFileDialog.getOpenFileName(None, "Select SHP File", "", "Shapefiles (*.shp)")
@@ -235,10 +317,15 @@ class MapCraftPlugin:
     def reset_fields(self):
         self.wtg_path.clear()
         self.wtg_buff_path.clear()
+        self.wtg_buff_size_input.clear()
+        self.wtg_buff_size_input.hide()
         self.sibdry_path.clear()
         self.sibdry_buff_path.clear()
+        self.sibdry_buff_size_input.clear()
+        self.sibdry_buff_size_input.hide()
         self.prio_area.clear()
         self.project_name_input.clear()
+        self.layout_size_combo.setCurrentIndex(0)
         # self.Map_title_input.clear()
         self.state_combo.setCurrentIndex(0)
         self.scale_combo.setCurrentIndex(0)
@@ -396,7 +483,7 @@ class MapCraftPlugin:
                 self.iface.messageBar().pushCritical("MapCraft Plugin", "Could not load satellite basemap.")
                 return None, None, None
 
-            # layer.setOpacity(0.2)
+            layer.setOpacity(0.80)
             QgsProject.instance().addMapLayer(layer)
 
             # Return satellite settings so they can be used in layout updates
@@ -474,11 +561,14 @@ class MapCraftPlugin:
     def run_automated_map(self):
         Layout = self.wtg_path.text()
         Layout_buff = self.wtg_buff_path.text()
+        layout_buff_size = self.wtg_buff_size_input.text()
         Site_Bdry = self.sibdry_path.text()
         Site_Bdry_buff = self.sibdry_buff_path.text()
+        Site_Bdry_buff_size = self.sibdry_buff_size_input.text()
         wind_prio_area = self.prio_area.text()
         project_name = self.project_name_input.text()
         Map_title = self.Map_title_input.text()
+        layout_size = self.layout_size_combo.currentText()
         basemap_type = self.basemap_combo.currentText()
         state_selected = self.state_combo.currentText()
         scale = int(self.scale_combo.currentText())
@@ -486,7 +576,7 @@ class MapCraftPlugin:
         output_folder = self.pdf_path.text()
 
         today_name = datetime.today().strftime("%Y%m%d")
-        pdf_filename = f"{today_name}_Windpark_{project_name}_{Map_title}"
+        pdf_filename = f"{today_name}_Windpark_{project_name}_{Map_title}_{layout_size}"
         filename_base = os.path.join(output_folder, pdf_filename)
 
         if export_format == "PDF":
@@ -494,13 +584,24 @@ class MapCraftPlugin:
         else:
             output_path = os.path.join(self.pdf_path.text(), f"{filename_base}.png")
 
-
-        if not self.wtg_path.text() or not project_name or not output_folder:
+        # Check if one requested parameter is missing
+        if not Layout or not project_name or not output_folder or not Map_title:
             print("Please complete all fields before running.")
             return
 
+        # Check if WTG buffer SHP is selected but no buffer size entered
+        if Layout_buff and not layout_buff_size.strip():
+            print("Missing Input", "Please enter the WTG buffer size.")
+            return
 
-        layout_path = os.path.join(self.plugin_dir, "Übersichskarte_template_v5.qpt")
+        # Check if Site boundary buffer SHP is selected but no buffer size entered
+        if Site_Bdry_buff and not Site_Bdry_buff_size.strip():
+            print("Missing Input", "Please enter the site boundary buffer size.")
+            return
+
+            # Continue with map generation...
+
+        layout_path = os.path.join(self.plugin_dir, f"Übersichskarte_template_{layout_size}.qpt")
         style_path = os.path.join(self.plugin_dir, "WEA.qml")
 
         wms_layer, conf_dict, scale_conf = self.load_wms_layer(state_selected, scale, basemap_type)
@@ -511,12 +612,20 @@ class MapCraftPlugin:
         layer_name = os.path.basename(Layout)  # This is to get the SHP name in the ref
         WTG_layer = QgsVectorLayer(Layout, layer_name, "ogr")
         if WTG_layer.isValid():
-
             # Load style and add to project
             WTG_layer.loadNamedStyle(style_path)
             WTG_layer.triggerRepaint()
             QgsProject.instance().addMapLayer(WTG_layer)
             shp_layers_ref.append(layer_name)
+
+            # Get the first value from the 'LAYOUT' field
+            layout_value = None
+            layout_field_index = WTG_layer.fields().indexOf('LAYOUT')
+            if layout_field_index != -1:
+                for feature in WTG_layer.getFeatures():
+                    layout_value = feature['LAYOUT']
+                    if layout_value:
+                        break
 
 
             # Load WTG Buffer SHP
@@ -684,7 +793,7 @@ class MapCraftPlugin:
                 # Rename the legend label for the SHP WTG_layer
                 for child in root_group.findLayers():
                     if child.layer() == WTG_layer:
-                        child.setName("WEA - Neuplanung")  # Custom name shown in legend
+                        child.setName(f"WEA - Neuplanung ({layout_value})")  # Custom name shown in legend
 
                 legend_item.refresh()
 
@@ -693,7 +802,10 @@ class MapCraftPlugin:
                     root_group.addLayer(WTG_buff_layer)
                     for child in root_group.findLayers():
                         if child.layer() == WTG_buff_layer:
-                            child.setName("Rotor")
+                            name = "Rotorradius"
+                            if layout_buff_size:
+                                name = f"{name} ({layout_buff_size}m)"
+                            child.setName(name)
                 if Site_Bdry_layer:
                     root_group.addLayer(Site_Bdry_layer)
                     for child in root_group.findLayers():
@@ -703,7 +815,10 @@ class MapCraftPlugin:
                     root_group.addLayer(Site_Bdry_buff_layer)
                     for child in root_group.findLayers():
                         if child.layer() == Site_Bdry_buff_layer:
-                            child.setName("Projektfläche Puffer")
+                            name = "Abstandsfläche"
+                            if Site_Bdry_buff_size:
+                                name = f"{name} ({Site_Bdry_buff_size}m)"
+                            child.setName(name)
                 if priority_area_layer:
                     root_group.addLayer(priority_area_layer)
                     for child in root_group.findLayers():
@@ -726,7 +841,7 @@ class MapCraftPlugin:
                 if item.id() == 'label_proj':
                     item.setText(f"CRS: {projection}")
                 elif item.id() == 'label_creator':
-                    item.setText(f"Map produced on {today} by {username}")
+                    item.setText(f"Karte erzeugt am {today} von {username}")
                 elif item.id() == 'label_title':
                     item.setText(f"{Map_title}")
                 elif item.id() == 'label_Windpark':
@@ -766,11 +881,11 @@ class MapCraftPlugin:
         QgsProject.instance().removeMapLayer(wms_layer)
         if WTG_buff_layer:
             QgsProject.instance().removeMapLayer(WTG_buff_layer)
-        elif Site_Bdry_layer:
+        if Site_Bdry_layer:
             QgsProject.instance().removeMapLayer(Site_Bdry_layer)
-        elif Site_Bdry_buff_layer:
+        if Site_Bdry_buff_layer:
             QgsProject.instance().removeMapLayer(Site_Bdry_buff_layer)
-        elif priority_area_layer:
+        if priority_area_layer:
             QgsProject.instance().removeMapLayer(priority_area_layer)
 
 
@@ -780,6 +895,7 @@ class MapCraftPlugin:
         # Basic validation
         project_name = self.project_name_input.text()
         Map_title = self.Map_title_input.text()
+        layout_size = self.layout_size_combo.currentText()
         state_selected = self.state_combo.currentText()
         basemap_type = self.basemap_combo.currentText()
         scale = int(self.scale_combo.currentText())
@@ -789,7 +905,7 @@ class MapCraftPlugin:
         pdf_filename = f"{today_name}_Windpark_{project_name}_{Map_title}"
         output_path = os.path.join(output_folder, f"{pdf_filename}.{export_format.lower()}")
 
-        layout_path = os.path.join(self.plugin_dir, "Übersichskarte_template_v5.qpt")
+        layout_path = os.path.join(self.plugin_dir, f"Übersichskarte_template_{layout_size}.qpt")
 
         # Load template
         with open(layout_path, 'r') as f:
@@ -939,6 +1055,10 @@ class MapCraftPlugin:
                     item.setText(f"Ref: {ref_text}")
                 elif item.id() == 'label_CR':
                     item.setText(f"Hintergrund: ©{copyright_text}")
+                    font = item.font()
+                    font.setPointSize(4)
+                    item.setFont(font)
+                    item.refresh()
 
         # Export
         exporter = QgsLayoutExporter(layout)
