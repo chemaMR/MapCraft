@@ -5,18 +5,18 @@ from PyQt5.QtWidgets import (QAction, QFileDialog, QWidget, QVBoxLayout, QLabel,
                              QPushButton, QComboBox, QHBoxLayout, QFormLayout, QLineEdit,
                              QGroupBox, QDialog, QScrollArea, QWidget)
 from PyQt5.QtGui import QIcon, QColor
-from PyQt5.QtCore import Qt
+from PyQt5.QtCore import Qt, QSizeF
 from qgis.utils import iface
 from qgis.core import (
     QgsProject, QgsVectorLayer, QgsRasterLayer,
     QgsPrintLayout, QgsLayoutItemMap, QgsReadWriteContext, QgsRectangle,
     QgsLayoutExporter, QgsLayoutItemRegistry, QgsLineSymbol, QgsSingleSymbolRenderer,
     QgsLayoutItemScaleBar, QgsUnitTypes, QgsLayerTreeLayer, QgsLayoutSize, QgsFillSymbol,
-    QgsSimpleFillSymbolLayer, QgsSimpleLineSymbolLayer
+    QgsSimpleFillSymbolLayer, QgsSimpleLineSymbolLayer, QgsLayoutPoint
 )
 from qgis.PyQt.QtXml import QDomDocument
 
-
+# START OF PLUG-IN CONFIGURATION
 class MapCraftPlugin:
     def __init__(self, iface):
         self.iface = iface
@@ -334,6 +334,7 @@ class MapCraftPlugin:
         self.mode_combo.setCurrentIndex(0)
         self.toggle_shp_inputs()
 
+# END OF PLUG-IN CONFIGURATION
     def load_wms_layer(self, state_selected, scale, basemap_type):
         """
         Loads a WMS or XYZ raster layer based on the selected state, scale, and basemap type.
@@ -565,7 +566,7 @@ class MapCraftPlugin:
         Site_Bdry = self.sibdry_path.text()
         Site_Bdry_buff = self.sibdry_buff_path.text()
         Site_Bdry_buff_size = self.sibdry_buff_size_input.text()
-        wind_prio_area = self.prio_area.text()
+        wind_priory_area = self.prio_area.text()
         project_name = self.project_name_input.text()
         Map_title = self.Map_title_input.text()
         layout_size = self.layout_size_combo.currentText()
@@ -700,9 +701,9 @@ class MapCraftPlugin:
 
         # Load wind priority area
         priority_area_layer = None
-        if wind_prio_area:
-            layer_name_4 = os.path.basename(wind_prio_area)  # Get the SHP name
-            priority_area_layer = QgsVectorLayer(wind_prio_area, layer_name_4, "ogr")
+        if wind_priory_area:
+            layer_name_4 = os.path.basename(wind_priory_area)  # Get the SHP name
+            priority_area_layer = QgsVectorLayer(wind_priory_area, layer_name_4, "ogr")
 
             if priority_area_layer.isValid():
                 # Create the bottom stroke: thick, light red, semi-transparent
@@ -757,21 +758,64 @@ class MapCraftPlugin:
 
             # === SCALE BAR SETUP ===
             scale_bar_item = layout.itemById('scale')
-            if isinstance(scale_bar_item, QgsLayoutItemScaleBar):
+            if isinstance(scale_bar_item, QgsLayoutItemScaleBar) and map_item:
                 scale_bar_item.setStyle('Line Ticks Up')
                 scale_bar_item.setUnits(QgsUnitTypes.DistanceKilometers)
-                scale_bar_item.setNumberOfSegments(2)
                 scale_bar_item.setNumberOfSegmentsLeft(0)
                 scale_bar_item.setLinkedMap(map_item)
+
+                # Detect layout width to distinguish A4 vs A3
+                layout_width_mm = layout.pageCollection().page(0).pageSize().width()
+                is_a4 = layout_width_mm < 300
+
+                # Fixed visual width in mm
+                fixed_visual_width_mm = 25 if is_a4 else 50
+
+                # Convert mm to real-world km at current scale
+                real_world_km = (fixed_visual_width_mm * scale) / 1_000_000.0  # mm * scale / 1,000,000 → km
+
+                # Cap max bar length for A4 to avoid overflow
+                if is_a4 and real_world_km > 0.5:
+                    real_world_km = 0.5
+
+                # Handle specific case for 1:15000 where we want 0.5 km total
+                if scale == 15000 and is_a4:
+                    real_world_km = 0.5
+
+                # Choose segment count
+                if real_world_km <= 0.25:
+                    segments = 2
+                elif real_world_km <= 0.5:
+                    segments = 2
+                else:
+                    segments = 4
+
+                units_per_segment = real_world_km / segments
+
+                # Apply to scale bar
+                scale_bar_item.setNumberOfSegments(segments)
+                scale_bar_item.setUnitsPerSegment(units_per_segment)
+
+                print(
+                    f"[Scale Bar] Layout: {'A4' if is_a4 else 'A3'}, Scale 1:{scale}, Total km: {real_world_km:.2f}, Segments: {segments}, Width mm: {fixed_visual_width_mm}")
+
+
+            else:
+                # --- A3 layout or larger: fixed segment-based config ---
+                scale_bar_item.setNumberOfSegments(2)
 
                 if scale == 10000:
                     scale_bar_item.setUnitsPerSegment(0.25)
                 elif scale == 15000:
-                    scale_bar_item.setUnitsPerSegment(0.3)  # 0.3 km per segment
+                    scale_bar_item.setUnitsPerSegment(0.3)
                 elif scale == 25000:
-                    scale_bar_item.setUnitsPerSegment(0.5)  # 0.5 km per segment
+                    scale_bar_item.setUnitsPerSegment(0.5)
                 elif scale == 50000:
                     scale_bar_item.setUnitsPerSegment(1.0)
+
+            # Get the width of the scale bar in layout units (mm)
+            scale_bar_width_mm = scale_bar_item.rect().width()
+            print(f"Scale bar width: {scale_bar_width_mm:.2f} mm")
 
             # === LEGEND SETUP ===
             legend_item = layout.itemById("simbology")  # Make sure your layout legend ID is 'simbology'
