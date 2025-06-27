@@ -3,7 +3,7 @@ import getpass
 from datetime import datetime
 from PyQt5.QtWidgets import (QAction, QFileDialog, QWidget, QVBoxLayout, QLabel, QLineEdit,
                              QPushButton, QComboBox, QHBoxLayout, QFormLayout, QLineEdit,
-                             QGroupBox, QDialog, QScrollArea, QWidget)
+                             QGroupBox, QDialog, QScrollArea, QWidget, QCheckBox)
 from PyQt5.QtGui import QIcon, QColor
 from PyQt5.QtCore import Qt, QSizeF
 from qgis.utils import iface
@@ -57,6 +57,7 @@ class MapCraftPlugin:
             # WTG SHP
             WTG_layout = QHBoxLayout()
             self.wtg_path = QLineEdit()
+            self.wtg_path.setText("C:/Users/cfp29/Documents/Testing_SHP/DEKMB01WN_DWTG_LKMB01004_v01_241210jmmr25832.shp")  # Deactivate
             browse_wtg_shp = QPushButton("Browse SHP")
             browse_wtg_shp.clicked.connect(self.browse_wtg_shp)
             WTG_layout.addWidget(QLabel("WTG layout:"))
@@ -118,6 +119,7 @@ class MapCraftPlugin:
 
             # Project Name
             self.project_name_input = QLineEdit()
+            self.project_name_input.setText("KIMA") #Deactivate
             form_layout.addWidget(QLabel("Project name:"))
             form_layout.addWidget(self.project_name_input)
 
@@ -129,7 +131,7 @@ class MapCraftPlugin:
 
             # Layout Size Selector
             self.layout_size_combo = QComboBox()
-            self.layout_size_combo.addItems(["A3", "A4", ])  # Add more if needed
+            self.layout_size_combo.addItems(["A4", "A3", ])  # Add more if needed
             form_layout.addWidget(QLabel("Map layout size:"))
             form_layout.addWidget(self.layout_size_combo)
 
@@ -154,6 +156,9 @@ class MapCraftPlugin:
             # Output Folder
             pdf_layout = QHBoxLayout()
             self.pdf_path = QLineEdit()
+
+            self.pdf_path = QLineEdit()
+            self.pdf_path.setText("C:/Users/cfp29/Downloads/map")  #Deactivate
             browse_pdf = QPushButton("Browse Folder")
             browse_pdf.clicked.connect(self.browse_pdf)
             pdf_layout.addWidget(QLabel("PDF Output Folder:"))
@@ -166,6 +171,9 @@ class MapCraftPlugin:
             self.format_combo.addItems(["PDF", "PNG"])
             form_layout.addWidget(QLabel("Export Format:"))
             form_layout.addWidget(self.format_combo)
+
+            self.keepLayersCheckBox = QCheckBox("Keep layers in QGIS after export")
+            form_layout.addWidget(self.keepLayersCheckBox)
 
             # Reset Button
             reset_button = QPushButton("Reset")
@@ -330,6 +338,7 @@ class MapCraftPlugin:
         self.state_combo.setCurrentIndex(0)
         self.scale_combo.setCurrentIndex(0)
         self.pdf_path.clear()
+        self.keepLayersCheckBox.setChecked(False)
         self.format_combo.setCurrentIndex(0)
         self.mode_combo.setCurrentIndex(0)
         self.toggle_shp_inputs()
@@ -613,6 +622,12 @@ class MapCraftPlugin:
         layer_name = os.path.basename(Layout)  # This is to get the SHP name in the ref
         WTG_layer = QgsVectorLayer(Layout, layer_name, "ogr")
         if WTG_layer.isValid():
+            # Remove any existing layer with the same data source (not just same name)
+            for layer in QgsProject.instance().mapLayers().values():
+                if isinstance(layer, QgsVectorLayer) and layer.source() == WTG_layer.source():
+                    QgsProject.instance().removeMapLayer(layer.id())
+
+
             # Load style and add to project
             WTG_layer.loadNamedStyle(style_path)
             WTG_layer.triggerRepaint()
@@ -627,6 +642,8 @@ class MapCraftPlugin:
                     layout_value = feature['LAYOUT']
                     if layout_value:
                         break
+
+
 
 
             # Load WTG Buffer SHP
@@ -764,58 +781,80 @@ class MapCraftPlugin:
                 scale_bar_item.setNumberOfSegmentsLeft(0)
                 scale_bar_item.setLinkedMap(map_item)
 
-                # Detect layout width to distinguish A4 vs A3
-                layout_width_mm = layout.pageCollection().page(0).pageSize().width()
-                is_a4 = layout_width_mm < 300
+                if layout_size == "A4":
 
-                # Fixed visual width in mm
-                fixed_visual_width_mm = 25 if is_a4 else 50
+                    # Handle specific case for 1:15000 where we want 0.5 km total
+                    if scale == 10000:
+                        # fixed_visual_width_mm = 25
+                        # real_world_km = (fixed_visual_width_mm * scale) / 1_000_000.0  # mm * scale / 1,000,000 → km
+                        real_world_km = 0.25
+                        segments = 2
 
-                # Convert mm to real-world km at current scale
-                real_world_km = (fixed_visual_width_mm * scale) / 1_000_000.0  # mm * scale / 1,000,000 → km
+                    elif scale == 15000:
+                        real_world_km = 0.5
+                        segments = 2
 
-                # Cap max bar length for A4 to avoid overflow
-                if is_a4 and real_world_km > 0.5:
-                    real_world_km = 0.5
+                    elif scale == 25000:
+                        # fixed_visual_width_mm = 40
+                        # real_world_km = (fixed_visual_width_mm * scale) / 1_000_000.0  # mm * scale / 1,000,000 → km
+                        real_world_km = 1
+                        segments = 2
 
-                # Handle specific case for 1:15000 where we want 0.5 km total
-                if scale == 15000 and is_a4:
-                    real_world_km = 0.5
+                    elif scale == 50000:
+                        real_world_km = 2
+                        segments = 2
 
-                # Choose segment count
-                if real_world_km <= 0.25:
-                    segments = 2
-                elif real_world_km <= 0.5:
-                    segments = 2
+                    units_per_segment = real_world_km / segments
+
+                    # Apply to scale bar
+                    scale_bar_item.setNumberOfSegments(segments)
+                    scale_bar_item.setUnitsPerSegment(units_per_segment)
+
+                    if scale == 10000:
+                        # Adjust scale bar position
+                        current_pos = scale_bar_item.pos()
+                        adjusted_x = current_pos.x() + 2 # Move x mm to the left
+                        adjusted_y = current_pos.y() # Keep Y position unchanged
+                        scale_bar_item.attemptMove(QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+
+                    elif scale == 15000:
+                        # Adjust scale bar position
+                        current_pos = scale_bar_item.pos()
+                        adjusted_x = current_pos.x() - 3 # Move x mm to the left
+                        adjusted_y = current_pos.y() # Keep Y position unchanged
+                        scale_bar_item.attemptMove(QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+
+
+                    elif scale == 25000 or scale == 50000:
+                        # Adjust scale bar position
+                        current_pos = scale_bar_item.pos()
+                        adjusted_x = current_pos.x() - 5  # Move x mm to the left
+                        adjusted_y = current_pos.y()  # Keep Y position unchanged
+                        scale_bar_item.attemptMove(QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+
+
                 else:
-                    segments = 4
+                    # --- A3 layout or larger: fixed segment-based config ---
+                    scale_bar_item.setNumberOfSegments(2)
 
-                units_per_segment = real_world_km / segments
+                    if scale == 10000:
+                        scale_bar_item.setUnitsPerSegment(0.25)
+                        # Adjust scale bar position
+                        current_pos = scale_bar_item.pos()
+                        adjusted_x = current_pos.x() - 5  # Move x mm to the left
+                        adjusted_y = current_pos.y()  # Keep Y position unchanged
+                        scale_bar_item.attemptMove(
+                            QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+                    elif scale == 15000:
+                        scale_bar_item.setUnitsPerSegment(0.3)
+                    elif scale == 25000:
+                        scale_bar_item.setUnitsPerSegment(0.5)
+                    elif scale == 50000:
+                        scale_bar_item.setUnitsPerSegment(1.0)
 
-                # Apply to scale bar
-                scale_bar_item.setNumberOfSegments(segments)
-                scale_bar_item.setUnitsPerSegment(units_per_segment)
-
-                print(
-                    f"[Scale Bar] Layout: {'A4' if is_a4 else 'A3'}, Scale 1:{scale}, Total km: {real_world_km:.2f}, Segments: {segments}, Width mm: {fixed_visual_width_mm}")
-
-
-            else:
-                # --- A3 layout or larger: fixed segment-based config ---
-                scale_bar_item.setNumberOfSegments(2)
-
-                if scale == 10000:
-                    scale_bar_item.setUnitsPerSegment(0.25)
-                elif scale == 15000:
-                    scale_bar_item.setUnitsPerSegment(0.3)
-                elif scale == 25000:
-                    scale_bar_item.setUnitsPerSegment(0.5)
-                elif scale == 50000:
-                    scale_bar_item.setUnitsPerSegment(1.0)
-
-            # Get the width of the scale bar in layout units (mm)
-            scale_bar_width_mm = scale_bar_item.rect().width()
-            print(f"Scale bar width: {scale_bar_width_mm:.2f} mm")
+                # Get the width of the scale bar in layout units (mm)
+                scale_bar_width_mm = scale_bar_item.rect().width()
+                print(f"Scale bar width: {scale_bar_width_mm:.2f} mm")
 
             # === LEGEND SETUP ===
             legend_item = layout.itemById("simbology")  # Make sure your layout legend ID is 'simbology'
@@ -894,10 +933,16 @@ class MapCraftPlugin:
                     item.setText(f"Ref: {ref_text}")
                 elif item.id() == 'label_CR':
                     item.setText(f"Hintergrund: ©{copyright_text}")
-                    font = item.font()
-                    font.setPointSize(4)
-                    item.setFont(font)
-                    item.refresh()
+                    if layout_size == "A4":
+                        font = item.font()
+                        font.setPointSize(3)
+                        item.setFont(font)
+                        item.refresh()
+                    else:
+                        font = item.font()
+                        font.setPointSize(4)
+                        item.setFont(font)
+                        item.refresh()
 
 
         # Export based on selected format
@@ -920,17 +965,21 @@ class MapCraftPlugin:
             else:
                 self.iface.messageBar().pushCritical('Error', 'PNG export failed.')
 
-        # ✅ Remove added layers from canvas
-        QgsProject.instance().removeMapLayer(WTG_layer)
+        # ✅ Remove WMS layers from canvas
         QgsProject.instance().removeMapLayer(wms_layer)
-        if WTG_buff_layer:
-            QgsProject.instance().removeMapLayer(WTG_buff_layer)
-        if Site_Bdry_layer:
-            QgsProject.instance().removeMapLayer(Site_Bdry_layer)
-        if Site_Bdry_buff_layer:
-            QgsProject.instance().removeMapLayer(Site_Bdry_buff_layer)
-        if priority_area_layer:
-            QgsProject.instance().removeMapLayer(priority_area_layer)
+
+        # Conditionally remove other layers
+        if not self.keepLayersCheckBox.isChecked():
+            QgsProject.instance().removeMapLayer(WTG_layer)
+
+            if WTG_buff_layer:
+                QgsProject.instance().removeMapLayer(WTG_buff_layer)
+            if Site_Bdry_layer:
+                QgsProject.instance().removeMapLayer(Site_Bdry_layer)
+            if Site_Bdry_buff_layer:
+                QgsProject.instance().removeMapLayer(Site_Bdry_buff_layer)
+            if priority_area_layer:
+                QgsProject.instance().removeMapLayer(priority_area_layer)
 
 
         self.iface.mapCanvas().refresh()
