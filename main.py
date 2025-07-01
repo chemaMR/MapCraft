@@ -57,7 +57,7 @@ class MapCraftPlugin:
             # WTG SHP
             WTG_layout = QHBoxLayout()
             self.wtg_path = QLineEdit()
-            self.wtg_path.setText("C:/Users/cfp29/Documents/Testing_SHP/DEKMB01WN_DWTG_LKMB01004_v01_241210jmmr25832.shp")  # Deactivate
+            self.wtg_path.setText("C:/Users/cfp29/Documents/Testing_SHP/DEWTL01WN_DWTG_LWTL01007_v01_250509jmmr25832.shp")  # Deactivate
             browse_wtg_shp = QPushButton("Browse SHP")
             browse_wtg_shp.clicked.connect(self.browse_wtg_shp)
             WTG_layout.addWidget(QLabel("WTG layout:"))
@@ -109,17 +109,27 @@ class MapCraftPlugin:
 
             # Wind priority area
             priority_area = QHBoxLayout()
-            self.prio_area = QLineEdit()
+            self.priory_area = QLineEdit()
             browse_priority_area_shp = QPushButton("Browse SHP")
             browse_priority_area_shp.clicked.connect(self.browse_priority_area_shp)
             priority_area.addWidget(QLabel("Wind priority area:"))
-            priority_area.addWidget(self.prio_area)
+            priority_area.addWidget(self.priory_area)
             priority_area.addWidget(browse_priority_area_shp)
             form_layout.addLayout(priority_area)
 
+            # Potential wind area
+            potential_area = QHBoxLayout()
+            self.potential_area = QLineEdit()
+            browse_potential_area_shp = QPushButton("Browse SHP")
+            browse_potential_area_shp.clicked.connect(self.browse_potential_area_shp)
+            potential_area.addWidget(QLabel("Wind potential area:"))
+            potential_area.addWidget(self.potential_area)
+            potential_area.addWidget(browse_potential_area_shp)
+            form_layout.addLayout(potential_area)
+
             # Project Name
             self.project_name_input = QLineEdit()
-            self.project_name_input.setText("KIMA") #Deactivate
+            self.project_name_input.setText("Winterlingen") # Deactivate
             form_layout.addWidget(QLabel("Project name:"))
             form_layout.addWidget(self.project_name_input)
 
@@ -131,7 +141,7 @@ class MapCraftPlugin:
 
             # Layout Size Selector
             self.layout_size_combo = QComboBox()
-            self.layout_size_combo.addItems(["A4", "A3", ])  # Add more if needed
+            self.layout_size_combo.addItems(["A3", "A4", ])  # Add more if needed
             form_layout.addWidget(QLabel("Map layout size:"))
             form_layout.addWidget(self.layout_size_combo)
 
@@ -156,9 +166,7 @@ class MapCraftPlugin:
             # Output Folder
             pdf_layout = QHBoxLayout()
             self.pdf_path = QLineEdit()
-
-            self.pdf_path = QLineEdit()
-            self.pdf_path.setText("C:/Users/cfp29/Downloads/map")  #Deactivate
+            self.pdf_path.setText("C:/Users/cfp29/Downloads/map")  # Deactivate
             browse_pdf = QPushButton("Browse Folder")
             browse_pdf.clicked.connect(self.browse_pdf)
             pdf_layout.addWidget(QLabel("PDF Output Folder:"))
@@ -172,7 +180,7 @@ class MapCraftPlugin:
             form_layout.addWidget(QLabel("Export Format:"))
             form_layout.addWidget(self.format_combo)
 
-            self.keepLayersCheckBox = QCheckBox("Keep layers in QGIS after export")
+            self.keepLayersCheckBox = QCheckBox("Keep layers in QGIS after Map exporting")
             form_layout.addWidget(self.keepLayersCheckBox)
 
             # Reset Button
@@ -205,6 +213,7 @@ class MapCraftPlugin:
                 </ul><br>
 
                 <b>Input Layers</b><br>
+                <span style="color:red;">IMPORTANT:</span> All Shapefiles must be projected.<br>
                 <ul>
                     <li><b>WTG Layout:</b> <i>(Required)</i> Wind Turbine Generator layout.<br>
                     <span style="color:red;">IMPORTANT:</span> This shapefile should be the one produced by the GIS team.<br>
@@ -215,7 +224,10 @@ class MapCraftPlugin:
                     <li><b>Site Boundary:</b> <i>(Optional)</i> Shapefile defining the project site boundary.</li><br>
 
                     <li><b>Site Boundary Buffer:</b> <i>(Optional)</i> Shapefile defining a buffer around the site boundary. If a Shapefile is provided, the buffer area distance must be also registered (e.g., 87.5, 90).</li><br>
-                    <li><b>Wind Priority Area:</b> <i>(Optional)</i> Wind priority areas relevant to the project.</li>
+                    
+                    <li><b>Wind Priority Area (Windvorranggebiet):</b> <i>(Optional)</i> A legally designated area in regional or land-use plans where wind energy has priority.</li><br>
+                    
+                    <li><b>Wind Potential Area (Potenzialfläche):</b> <i>(Optional)</i> Area that has been identified as suitable for wind energy but not yet officially designated..</li>
                 </ul><br>
 
                 <b>Project Metadata</b><br>
@@ -240,6 +252,7 @@ class MapCraftPlugin:
 
                 <b>Actions</b><br>
                 <ul>
+                    <li><b>Keep layers in QGIS after Map exporting:</b> Use this option if you want to retain the layers used to create the map in your QGIS project.:</b> Use this option if you want to retain the layers used in the QGIS project after exporting the map.</li><br>
                     <li><b>Reset:</b> Clears all fields and selections in the form.</li><br>
                     <li><b>Run:</b> Starts the map generation process.</li>
                 </ul><br>
@@ -280,7 +293,9 @@ class MapCraftPlugin:
         self.wtg_buff_path.setEnabled(is_automated)
         self.sibdry_path.setEnabled(is_automated)
         self.sibdry_buff_path.setEnabled(is_automated)
-        self.prio_area.setEnabled(is_automated)
+        self.priory_area.setEnabled(is_automated)
+        self.potential_area.setEnabled(is_automated)
+        self.keepLayersCheckBox.setEnabled(is_automated)
         # Also disable the browse buttons
         for button in self.dialog.findChildren(QPushButton):
             if button.text() in ["Browse SHP"]:
@@ -315,7 +330,12 @@ class MapCraftPlugin:
     def browse_priority_area_shp(self):
         filename, _ = QFileDialog.getOpenFileName(None, "Select SHP File", "", "Shapefiles (*.shp)")
         if filename:
-            self.prio_area.setText(filename)
+            self.priory_area.setText(filename)
+
+    def browse_potential_area_shp(self):
+        filename, _ = QFileDialog.getOpenFileName(None, "Select SHP File", "", "Shapefiles (*.shp)")
+        if filename:
+            self.potential_area.setText(filename)
 
     def browse_pdf(self):
         filename = QFileDialog.getExistingDirectory(None, "Select Output Folder", "")
@@ -331,7 +351,8 @@ class MapCraftPlugin:
         self.sibdry_buff_path.clear()
         self.sibdry_buff_size_input.clear()
         self.sibdry_buff_size_input.hide()
-        self.prio_area.clear()
+        self.priory_area.clear()
+        self.potential_area.clear()
         self.project_name_input.clear()
         self.layout_size_combo.setCurrentIndex(0)
         # self.Map_title_input.clear()
@@ -416,7 +437,11 @@ class MapCraftPlugin:
             },
             "Niedersachsen": {
                 "scales": {
-                    "10000": {},  # Not available
+                    "10000": {
+                        "wms_url": "https://www.geobasisdaten.niedersachsen.de/wms/dtk25?",
+                        "layer_name": "DTK25",
+                        "title": "DTK25 NI"
+                    },
                     "25000": {
                         "wms_url": "https://www.geobasisdaten.niedersachsen.de/wms/dtk25?",
                         "layer_name": "DTK25",
@@ -520,16 +545,15 @@ class MapCraftPlugin:
 
             wms_layer = QgsRasterLayer(wms_url, f"{state_selected} Basemap", "wms")
             if not wms_layer.isValid():
-                self.iface.messageBar().pushCritical("MapCraft Plugin",
-                                                     f"Could not load WMS for {state_selected} at scale {scale_str}.")
+                print("MapCraft Plugin",f"Could not load WMS for {state_selected} at scale {scale_str}. TRY LATER!")
                 return None, None, None
 
-            wms_layer.setOpacity(0.5)
+            wms_layer.setOpacity(0.6)
             QgsProject.instance().addMapLayer(wms_layer)
             return wms_layer, state_conf, scale_conf
 
         else:
-            self.iface.messageBar().pushCritical("MapCraft Plugin", f"Unknown basemap type: {basemap_type}")
+            print("MapCraft Plugin", f"Unknown basemap type: {basemap_type}")
             return None, None, None
 
     def adjust_legend_font_size(self, legend_item, max_items=5, base_size=6, min_size=6):
@@ -575,7 +599,8 @@ class MapCraftPlugin:
         Site_Bdry = self.sibdry_path.text()
         Site_Bdry_buff = self.sibdry_buff_path.text()
         Site_Bdry_buff_size = self.sibdry_buff_size_input.text()
-        wind_priory_area = self.prio_area.text()
+        wind_priory_area = self.priory_area.text()
+        wind_potential_area = self.potential_area.text()
         project_name = self.project_name_input.text()
         Map_title = self.Map_title_input.text()
         layout_size = self.layout_size_combo.currentText()
@@ -609,20 +634,18 @@ class MapCraftPlugin:
             print("Missing Input", "Please enter the site boundary buffer size.")
             return
 
-            # Continue with map generation...
 
-        layout_path = os.path.join(self.plugin_dir, f"Übersichskarte_template_{layout_size}.qpt")
+        layout_path = os.path.join(self.plugin_dir, f"Übersichskarte_{layout_size}.qpt")
         style_path = os.path.join(self.plugin_dir, "WEA.qml")
 
-        wms_layer, conf_dict, scale_conf = self.load_wms_layer(state_selected, scale, basemap_type)
-
+        map_layers = []
         shp_layers_ref = []  # Create a list to be used a REF
 
         # Load WTG SHP
-        layer_name = os.path.basename(Layout)  # This is to get the SHP name in the ref
+        layer_name = os.path.basename(Layout) # This is to get the SHP name in the ref
         WTG_layer = QgsVectorLayer(Layout, layer_name, "ogr")
         if WTG_layer.isValid():
-            # Remove any existing layer with the same data source (not just same name)
+            # Remove any existing layer with the same data source
             for layer in QgsProject.instance().mapLayers().values():
                 if isinstance(layer, QgsVectorLayer) and layer.source() == WTG_layer.source():
                     QgsProject.instance().removeMapLayer(layer.id())
@@ -633,6 +656,8 @@ class MapCraftPlugin:
             WTG_layer.triggerRepaint()
             QgsProject.instance().addMapLayer(WTG_layer)
             shp_layers_ref.append(layer_name)
+            map_layers.append(WTG_layer)
+
 
             # Get the first value from the 'LAYOUT' field
             layout_value = None
@@ -643,28 +668,26 @@ class MapCraftPlugin:
                     if layout_value:
                         break
 
+        # Load WTG Buffer SHP
+        WTG_buff_layer = None
+        if Layout_buff:
+            layer_name_1 = os.path.basename(Layout_buff)  # Get the SHP name
+            WTG_buff_layer = QgsVectorLayer(Layout_buff, layer_name_1, "ogr")
 
+            if WTG_buff_layer.isValid():
+                # Create a transparent fill with red outline
+                symbol = QgsFillSymbol.createSimple({
+                    'outline_color': 'blue',
+                    'outline_width': '0.4',
+                    'outline_style': 'dash dot',
+                    'color': 'transparent'
+                })
 
-
-            # Load WTG Buffer SHP
-            WTG_buff_layer = None
-            if Layout_buff:
-                layer_name_1 = os.path.basename(Layout_buff)  # Get the SHP name
-                WTG_buff_layer = QgsVectorLayer(Layout_buff, layer_name_1, "ogr")
-
-                if WTG_buff_layer.isValid():
-                    # Create a transparent fill with red outline
-                    symbol = QgsFillSymbol.createSimple({
-                        'outline_color': 'blue',
-                        'outline_width': '0.4',
-                        'outline_style': 'dash dot',
-                        'color': 'transparent'
-                    })
-
-                    WTG_buff_layer.setRenderer(QgsSingleSymbolRenderer(symbol))
-                    WTG_buff_layer.triggerRepaint()
-                    QgsProject.instance().addMapLayer(WTG_buff_layer)
-                    shp_layers_ref.append(layer_name_1)
+                WTG_buff_layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+                WTG_buff_layer.triggerRepaint()
+                QgsProject.instance().addMapLayer(WTG_buff_layer)
+                shp_layers_ref.append(layer_name_1)
+                map_layers.append(WTG_buff_layer)
 
         # Load Site Boundary
         Site_Bdry_layer = None
@@ -682,6 +705,7 @@ class MapCraftPlugin:
                 Site_Bdry_layer.triggerRepaint()
                 QgsProject.instance().addMapLayer(Site_Bdry_layer)
                 shp_layers_ref.append(layer_name_2)
+                map_layers.append(Site_Bdry_layer)
 
         # Load Site Boundary Buffer
         Site_Bdry_buff_layer = None
@@ -715,6 +739,44 @@ class MapCraftPlugin:
                 # Add the layer to the project
                 QgsProject.instance().addMapLayer(Site_Bdry_buff_layer)
                 shp_layers_ref.append(layer_name_3)
+                map_layers.append(Site_Bdry_buff_layer)
+
+        # Load wind potential area
+        potential_area_layer = None
+        if wind_potential_area:
+            layer_name_5 = os.path.basename(wind_potential_area)
+            potential_area_layer = QgsVectorLayer(wind_potential_area, layer_name_5, "ogr")
+
+            if potential_area_layer.isValid():
+                # --- Fill style with diagonal lines ---
+                fill_layer = QgsSimpleFillSymbolLayer()
+                fill_layer.setColor(QColor(0, 128, 0, 80))  # Light semi-transparent green fill
+                fill_layer.setBrushStyle(Qt.BDiagPattern)  # Backward diagonal pattern
+
+                # --- Bottom border stroke (thicker, light green) ---
+                bottom_line = QgsSimpleLineSymbolLayer()
+                bottom_line.setColor(QColor(144, 238, 144, 128))  # Light green with transparency
+                bottom_line.setWidth(1.5)
+
+                # --- Top border stroke (thinner, dark green) ---
+                top_line = QgsSimpleLineSymbolLayer()
+                top_line.setColor(QColor(0, 100, 0))  # Dark green
+                top_line.setWidth(0.8)
+
+                # --- Assemble final symbol ---
+                symbol = QgsFillSymbol()
+                symbol.changeSymbolLayer(0, fill_layer)
+                symbol.appendSymbolLayer(bottom_line)
+                symbol.appendSymbolLayer(top_line)
+
+                # Apply the symbol to the layer
+                potential_area_layer.setRenderer(QgsSingleSymbolRenderer(symbol))
+                potential_area_layer.triggerRepaint()
+
+                # Add the layer to the project
+                QgsProject.instance().addMapLayer(potential_area_layer)
+                shp_layers_ref.append(layer_name_5)
+                map_layers.append(potential_area_layer)
 
         # Load wind priority area
         priority_area_layer = None
@@ -748,6 +810,11 @@ class MapCraftPlugin:
                 # Add the layer to the project
                 QgsProject.instance().addMapLayer(priority_area_layer)
                 shp_layers_ref.append(layer_name_4)
+                map_layers.append(priority_area_layer)
+
+        # Load the WMS sever
+        wms_layer, conf_dict, scale_conf = self.load_wms_layer(state_selected, scale, basemap_type)
+        map_layers.append(wms_layer)
 
         # Load Layout
         with open(layout_path, 'r') as f:
@@ -764,6 +831,7 @@ class MapCraftPlugin:
                         None)
 
         if map_item:
+            map_item.setLayers(map_layers) # Make sure that only the loaded layers are visible on the PDF map.
             map_item.setScale(scale)
             map_width_m = (map_item.rect().width() * scale) / 1000
             map_height_m = (map_item.rect().height() * scale) / 1000
@@ -783,10 +851,7 @@ class MapCraftPlugin:
 
                 if layout_size == "A4":
 
-                    # Handle specific case for 1:15000 where we want 0.5 km total
                     if scale == 10000:
-                        # fixed_visual_width_mm = 25
-                        # real_world_km = (fixed_visual_width_mm * scale) / 1_000_000.0  # mm * scale / 1,000,000 → km
                         real_world_km = 0.25
                         segments = 2
 
@@ -795,8 +860,6 @@ class MapCraftPlugin:
                         segments = 2
 
                     elif scale == 25000:
-                        # fixed_visual_width_mm = 40
-                        # real_world_km = (fixed_visual_width_mm * scale) / 1_000_000.0  # mm * scale / 1,000,000 → km
                         real_world_km = 1
                         segments = 2
 
@@ -813,51 +876,77 @@ class MapCraftPlugin:
                     if scale == 10000:
                         # Adjust scale bar position
                         current_pos = scale_bar_item.pos()
-                        adjusted_x = current_pos.x() + 2 # Move x mm to the left
-                        adjusted_y = current_pos.y() # Keep Y position unchanged
-                        scale_bar_item.attemptMove(QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+                        adjusted_x = current_pos.x() + 2  # Move x mm to the left
+                        adjusted_y = current_pos.y()  # Keep Y position unchanged
+                        scale_bar_item.attemptMove(
+                            QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
 
                     elif scale == 15000:
                         # Adjust scale bar position
                         current_pos = scale_bar_item.pos()
-                        adjusted_x = current_pos.x() - 3 # Move x mm to the left
-                        adjusted_y = current_pos.y() # Keep Y position unchanged
-                        scale_bar_item.attemptMove(QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
-
+                        adjusted_x = current_pos.x() - 3  # Move x mm to the left
+                        adjusted_y = current_pos.y()  # Keep Y position unchanged
+                        scale_bar_item.attemptMove(
+                            QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
 
                     elif scale == 25000 or scale == 50000:
                         # Adjust scale bar position
                         current_pos = scale_bar_item.pos()
                         adjusted_x = current_pos.x() - 5  # Move x mm to the left
                         adjusted_y = current_pos.y()  # Keep Y position unchanged
-                        scale_bar_item.attemptMove(QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+                        scale_bar_item.attemptMove(
+                            QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
 
-
-                else:
-                    # --- A3 layout or larger: fixed segment-based config ---
-                    scale_bar_item.setNumberOfSegments(2)
+                else:  # A3 or larger
 
                     if scale == 10000:
-                        scale_bar_item.setUnitsPerSegment(0.25)
+                        real_world_km = 0.5
+                        segments = 2
+
+                    elif scale == 15000:
+                        real_world_km = 0.5
+                        segments = 2
+
+                    elif scale == 25000:
+                        real_world_km = 1.0
+                        segments = 2
+
+                    elif scale == 50000:
+                        real_world_km = 2.0
+                        segments = 2
+
+                    units_per_segment = real_world_km / segments
+
+                    # Apply to scale bar
+                    scale_bar_item.setNumberOfSegments(segments)
+                    scale_bar_item.setUnitsPerSegment(units_per_segment)
+
+                    if scale == 10000:
                         # Adjust scale bar position
                         current_pos = scale_bar_item.pos()
                         adjusted_x = current_pos.x() - 5  # Move x mm to the left
                         adjusted_y = current_pos.y()  # Keep Y position unchanged
                         scale_bar_item.attemptMove(
                             QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+
                     elif scale == 15000:
-                        scale_bar_item.setUnitsPerSegment(0.3)
-                    elif scale == 25000:
-                        scale_bar_item.setUnitsPerSegment(0.5)
-                    elif scale == 50000:
-                        scale_bar_item.setUnitsPerSegment(1.0)
+                        # Adjust scale bar position
+                        current_pos = scale_bar_item.pos()
+                        adjusted_x = current_pos.x() + 5  # Move x mm to the right
+                        adjusted_y = current_pos.y()  # Keep Y position unchanged
+                        scale_bar_item.attemptMove(
+                            QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+
+                    elif scale == 25000 or scale == 50000:
+                        # No position adjustment defined
+                        pass
 
                 # Get the width of the scale bar in layout units (mm)
                 scale_bar_width_mm = scale_bar_item.rect().width()
                 print(f"Scale bar width: {scale_bar_width_mm:.2f} mm")
 
             # === LEGEND SETUP ===
-            legend_item = layout.itemById("simbology")  # Make sure your layout legend ID is 'simbology'
+            legend_item = layout.itemById("symbology")  # Make sure your layout legend ID is 'symbology'
 
             if legend_item and map_item:
                 legend_item.setLinkedMap(map_item)
@@ -876,7 +965,10 @@ class MapCraftPlugin:
                 # Rename the legend label for the SHP WTG_layer
                 for child in root_group.findLayers():
                     if child.layer() == WTG_layer:
-                        child.setName(f"WEA - Neuplanung ({layout_value})")  # Custom name shown in legend
+                        if layout_value is not None:
+                            child.setName(f"WEA - Neuplanung ({layout_value})")  # Custom name shown in legend
+                        else:
+                            child.setName(f"WEA - Neuplanung")  # Custom name shown in legend
 
                 legend_item.refresh()
 
@@ -887,7 +979,7 @@ class MapCraftPlugin:
                         if child.layer() == WTG_buff_layer:
                             name = "Rotorradius"
                             if layout_buff_size:
-                                name = f"{name} ({layout_buff_size}m)"
+                                name = f"{name} ({layout_buff_size} m)"
                             child.setName(name)
                 if Site_Bdry_layer:
                     root_group.addLayer(Site_Bdry_layer)
@@ -900,12 +992,17 @@ class MapCraftPlugin:
                         if child.layer() == Site_Bdry_buff_layer:
                             name = "Abstandsfläche"
                             if Site_Bdry_buff_size:
-                                name = f"{name} ({Site_Bdry_buff_size}m)"
+                                name = f"{name} ({Site_Bdry_buff_size} m)"
                             child.setName(name)
                 if priority_area_layer:
                     root_group.addLayer(priority_area_layer)
                     for child in root_group.findLayers():
                         if child.layer() == priority_area_layer:
+                            child.setName("Windvorranggebiet")
+                if potential_area_layer:
+                    root_group.addLayer(potential_area_layer)
+                    for child in root_group.findLayers():
+                        if child.layer() == potential_area_layer:
                             child.setName("Potenzialfläche")
 
         # Dynamic Labels
@@ -980,6 +1077,8 @@ class MapCraftPlugin:
                 QgsProject.instance().removeMapLayer(Site_Bdry_buff_layer)
             if priority_area_layer:
                 QgsProject.instance().removeMapLayer(priority_area_layer)
+            if potential_area_layer:
+                QgsProject.instance().removeMapLayer(potential_area_layer)
 
 
         self.iface.mapCanvas().refresh()
@@ -994,11 +1093,17 @@ class MapCraftPlugin:
         scale = int(self.scale_combo.currentText())
         export_format = self.format_combo.currentText()
         output_folder = self.pdf_path.text()
-        today_name = datetime.today().strftime("%Y%m%d")
-        pdf_filename = f"{today_name}_Windpark_{project_name}_{Map_title}"
-        output_path = os.path.join(output_folder, f"{pdf_filename}.{export_format.lower()}")
 
-        layout_path = os.path.join(self.plugin_dir, f"Übersichskarte_template_{layout_size}.qpt")
+        today_name = datetime.today().strftime("%Y%m%d")
+        pdf_filename = f"{today_name}_Windpark_{project_name}_{Map_title}_{layout_size}"
+        filename_base = os.path.join(output_folder, pdf_filename)
+
+        if export_format == "PDF":
+            output_path = os.path.join(self.pdf_path.text(), f"{filename_base}.pdf")
+        else:
+            output_path = os.path.join(self.pdf_path.text(), f"{filename_base}.png")
+
+        layout_path = os.path.join(self.plugin_dir, f"Übersichskarte_{layout_size}.qpt")
 
         # Load template
         with open(layout_path, 'r') as f:
@@ -1067,25 +1172,110 @@ class MapCraftPlugin:
 
         # === SCALE BAR SETUP ===
         scale_bar_item = layout.itemById('scale')
-        if isinstance(scale_bar_item, QgsLayoutItemScaleBar):
+        if isinstance(scale_bar_item, QgsLayoutItemScaleBar) and map_item:
             scale_bar_item.setStyle('Line Ticks Up')
             scale_bar_item.setUnits(QgsUnitTypes.DistanceKilometers)
-            scale_bar_item.setNumberOfSegments(2)
             scale_bar_item.setNumberOfSegmentsLeft(0)
             scale_bar_item.setLinkedMap(map_item)
 
-            if scale == 10000:
-                scale_bar_item.setUnitsPerSegment(0.25)
-            elif scale == 15000:
-                scale_bar_item.setUnitsPerSegment(0.3)  # 0.25 km per segment
-            elif scale == 25000:
-                scale_bar_item.setUnitsPerSegment(0.5)  # 0.5 km per segment
-            elif scale == 50000:
-                scale_bar_item.setUnitsPerSegment(1.0)
+            if layout_size == "A4":
+
+                if scale == 10000:
+                    real_world_km = 0.25
+                    segments = 2
+
+                elif scale == 15000:
+                    real_world_km = 0.5
+                    segments = 2
+
+                elif scale == 25000:
+                    real_world_km = 1
+                    segments = 2
+
+                elif scale == 50000:
+                    real_world_km = 2
+                    segments = 2
+
+                units_per_segment = real_world_km / segments
+
+                # Apply to scale bar
+                scale_bar_item.setNumberOfSegments(segments)
+                scale_bar_item.setUnitsPerSegment(units_per_segment)
+
+                if scale == 10000:
+                    # Adjust scale bar position
+                    current_pos = scale_bar_item.pos()
+                    adjusted_x = current_pos.x() + 2  # Move x mm to the left
+                    adjusted_y = current_pos.y()  # Keep Y position unchanged
+                    scale_bar_item.attemptMove(
+                        QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+
+                elif scale == 15000:
+                    # Adjust scale bar position
+                    current_pos = scale_bar_item.pos()
+                    adjusted_x = current_pos.x() - 3  # Move x mm to the left
+                    adjusted_y = current_pos.y()  # Keep Y position unchanged
+                    scale_bar_item.attemptMove(
+                        QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+
+                elif scale == 25000 or scale == 50000:
+                    # Adjust scale bar position
+                    current_pos = scale_bar_item.pos()
+                    adjusted_x = current_pos.x() - 5  # Move x mm to the left
+                    adjusted_y = current_pos.y()  # Keep Y position unchanged
+                    scale_bar_item.attemptMove(
+                        QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+
+            else:  # A3 or larger
+
+                if scale == 10000:
+                    real_world_km = 0.5
+                    segments = 2
+
+                elif scale == 15000:
+                    real_world_km = 0.5
+                    segments = 2
+
+                elif scale == 25000:
+                    real_world_km = 1.0
+                    segments = 2
+
+                elif scale == 50000:
+                    real_world_km = 2.0
+                    segments = 2
+
+                units_per_segment = real_world_km / segments
+
+                # Apply to scale bar
+                scale_bar_item.setNumberOfSegments(segments)
+                scale_bar_item.setUnitsPerSegment(units_per_segment)
+
+                if scale == 10000:
+                    # Adjust scale bar position
+                    current_pos = scale_bar_item.pos()
+                    adjusted_x = current_pos.x() - 5  # Move x mm to the left
+                    adjusted_y = current_pos.y()  # Keep Y position unchanged
+                    scale_bar_item.attemptMove(
+                        QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+
+                elif scale == 15000:
+                    # Adjust scale bar position
+                    current_pos = scale_bar_item.pos()
+                    adjusted_x = current_pos.x() + 5  # Move x mm to the right
+                    adjusted_y = current_pos.y()  # Keep Y position unchanged
+                    scale_bar_item.attemptMove(
+                        QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+
+                elif scale == 25000 or scale == 50000:
+                    # No position adjustment defined
+                    pass
+
+            # Get the width of the scale bar in layout units (mm)
+            scale_bar_width_mm = scale_bar_item.rect().width()
 
         # Legend setup
 
-        legend_item = layout.itemById("simbology")
+        legend_item = layout.itemById("symbology")
         if legend_item and map_item:
             legend_item.setLinkedMap(map_item)
             legend_item.setAutoUpdateModel(False)
@@ -1123,6 +1313,9 @@ class MapCraftPlugin:
                     layer_name = os.path.basename(layer_path)
                     shp_layers_ref.append(layer_name)
 
+        print(len(shp_layers_ref))
+        print(shp_layers_ref)
+
         # Dynamic labels
         username = getpass.getuser()
         today = datetime.today().strftime("%d/%m/%y")
@@ -1132,7 +1325,6 @@ class MapCraftPlugin:
             copyright_text = conf_dict.get("copyright", "")
         elif basemap_type == "Satellite" and conf_dict:
             copyright_text = conf_dict.get("copyright", "")
-
 
         for item in layout.items():
             if item.type() == QgsLayoutItemRegistry.LayoutLabel:
@@ -1148,21 +1340,33 @@ class MapCraftPlugin:
                     item.setText(f"Ref: {ref_text}")
                 elif item.id() == 'label_CR':
                     item.setText(f"Hintergrund: ©{copyright_text}")
-                    font = item.font()
-                    font.setPointSize(4)
-                    item.setFont(font)
-                    item.refresh()
+                    if layout_size == "A4":
+                        font = item.font()
+                        font.setPointSize(3)
+                        item.setFont(font)
+                        item.refresh()
+                    else:
+                        font = item.font()
+                        font.setPointSize(4)
+                        item.setFont(font)
+                        item.refresh()
 
-        # Export
+        # Export based on selected format
         exporter = QgsLayoutExporter(layout)
-        if export_format == "PDF":
-            result = exporter.exportToPdf(output_path, QgsLayoutExporter.PdfExportSettings())
-        else:
-            settings = QgsLayoutExporter.ImageExportSettings()
-            settings.dpi = 300
-            result = exporter.exportToImage(output_path, settings)
 
-        if result == QgsLayoutExporter.Success:
-            self.iface.messageBar().pushSuccess('Success', f'{export_format} exported successfully!')
-        else:
-            self.iface.messageBar().pushCritical('Error', f'{export_format} export failed.')
+        if export_format == "PDF":
+            pdf_settings = QgsLayoutExporter.PdfExportSettings()
+            result = exporter.exportToPdf(output_path, pdf_settings)
+            if result == QgsLayoutExporter.Success:
+                self.iface.messageBar().pushSuccess('Success', 'PDF exported successfully!')
+            else:
+                self.iface.messageBar().pushCritical('Error', 'PDF export failed.')
+
+        elif export_format == "PNG":
+            image_settings = QgsLayoutExporter.ImageExportSettings()
+            image_settings.dpi = 300  # ✅ Set high resolution
+            result = exporter.exportToImage(output_path, image_settings)
+            if result == QgsLayoutExporter.Success:
+                self.iface.messageBar().pushSuccess('Success', 'PNG exported successfully!')
+            else:
+                self.iface.messageBar().pushCritical('Error', 'PNG export failed.')
