@@ -4,7 +4,7 @@ from datetime import datetime
 from PyQt5.QtWidgets import (QAction, QFileDialog, QWidget, QVBoxLayout, QLabel, QLineEdit,
                              QPushButton, QComboBox, QHBoxLayout, QFormLayout, QLineEdit,
                              QGroupBox, QDialog, QScrollArea, QWidget, QCheckBox)
-from PyQt5.QtGui import QIcon, QColor
+from PyQt5.QtGui import QIcon, QColor, QFontMetricsF, QFont
 from PyQt5.QtCore import Qt, QSizeF
 from qgis.utils import iface
 from qgis.core import (
@@ -12,7 +12,7 @@ from qgis.core import (
     QgsPrintLayout, QgsLayoutItemMap, QgsReadWriteContext, QgsRectangle,
     QgsLayoutExporter, QgsLayoutItemRegistry, QgsLineSymbol, QgsSingleSymbolRenderer,
     QgsLayoutItemScaleBar, QgsUnitTypes, QgsLayerTreeLayer, QgsLayoutSize, QgsFillSymbol,
-    QgsSimpleFillSymbolLayer, QgsSimpleLineSymbolLayer, QgsLayoutPoint
+    QgsSimpleFillSymbolLayer, QgsSimpleLineSymbolLayer, QgsLayoutPoint, QgsLayerTreeGroup
 )
 from qgis.PyQt.QtXml import QDomDocument
 
@@ -57,7 +57,7 @@ class MapCraftPlugin:
             # WTG SHP
             WTG_layout = QHBoxLayout()
             self.wtg_path = QLineEdit()
-            self.wtg_path.setText("C:/Users/cfp29/Documents/Testing_SHP/DEWTL01WN_DWTG_LWTL01007_v01_250509jmmr25832.shp")  # Deactivate
+            # self.wtg_path.setText("C:/Users/cfp29/Documents/Testing_SHP/DEWTL01WN_DWTG_LWTL01007_v01_250509jmmr25832.shp")  # Deactivate
             browse_wtg_shp = QPushButton("Browse SHP")
             browse_wtg_shp.clicked.connect(self.browse_wtg_shp)
             WTG_layout.addWidget(QLabel("WTG layout:"))
@@ -129,12 +129,13 @@ class MapCraftPlugin:
 
             # Project Name
             self.project_name_input = QLineEdit()
-            self.project_name_input.setText("Winterlingen") # Deactivate
+            # self.project_name_input.setText("Winterlingen") # Deactivate
             form_layout.addWidget(QLabel("Project name:"))
             form_layout.addWidget(self.project_name_input)
 
             # Map title
             self.Map_title_input = QLineEdit()
+            self.Map_title_input.setMaxLength(100)
             self.Map_title_input.setText("Übersichtskarte")
             form_layout.addWidget(QLabel("Map title:"))
             form_layout.addWidget(self.Map_title_input)
@@ -147,7 +148,7 @@ class MapCraftPlugin:
 
             # Base Map
             self.basemap_combo = QComboBox()
-            self.basemap_combo.addItems(["Topographic", "Satellite"])
+            self.basemap_combo.addItems(["Topographic", "Satellite", "OpenStreetMap"])
             form_layout.addWidget(QLabel("Select base map type:"))
             form_layout.addWidget(self.basemap_combo)
 
@@ -166,7 +167,7 @@ class MapCraftPlugin:
             # Output Folder
             pdf_layout = QHBoxLayout()
             self.pdf_path = QLineEdit()
-            self.pdf_path.setText("C:/Users/cfp29/Downloads/map")  # Deactivate
+            # self.pdf_path.setText("C:/Users/cfp29/Downloads/map")  # Deactivate
             browse_pdf = QPushButton("Browse Folder")
             browse_pdf.clicked.connect(self.browse_pdf)
             pdf_layout.addWidget(QLabel("PDF Output Folder:"))
@@ -227,7 +228,7 @@ class MapCraftPlugin:
                     
                     <li><b>Wind Priority Area (Windvorranggebiet):</b> <i>(Optional)</i> A legally designated area in regional or land-use plans where wind energy has priority.</li><br>
                     
-                    <li><b>Wind Potential Area (Potenzialfläche):</b> <i>(Optional)</i> Area that has been identified as suitable for wind energy but not yet officially designated..</li>
+                    <li><b>Wind Potential Area (Potenzialfläche):</b> <i>(Optional)</i> Area that has been identified as suitable for wind energy based on different evaluations.</li>
                 </ul><br>
 
                 <b>Project Metadata</b><br>
@@ -289,6 +290,8 @@ class MapCraftPlugin:
 
     def toggle_shp_inputs(self):
         is_automated = self.mode_combo.currentText() == "Automated"
+
+        # Enable/disable SHP inputs and checkbox
         self.wtg_path.setEnabled(is_automated)
         self.wtg_buff_path.setEnabled(is_automated)
         self.sibdry_path.setEnabled(is_automated)
@@ -296,7 +299,8 @@ class MapCraftPlugin:
         self.priory_area.setEnabled(is_automated)
         self.potential_area.setEnabled(is_automated)
         self.keepLayersCheckBox.setEnabled(is_automated)
-        # Also disable the browse buttons
+
+        # Disable/enable browse buttons associated with SHP files
         for button in self.dialog.findChildren(QPushButton):
             if button.text() in ["Browse SHP"]:
                 button.setEnabled(is_automated)
@@ -487,7 +491,7 @@ class MapCraftPlugin:
             }
         }
 
-        # --- Global Satellite (XYZ) Basemap ---
+        # --- Global Satellite (XYZ) ESRI Basemap ---
         satellite_settings = {
             "basemap": {
                 "zmin": 0,
@@ -497,6 +501,30 @@ class MapCraftPlugin:
                 "title": "World Imagery"
             },
             "copyright": "Esri, Maxar, Earthstar Geographics, and the GIS User Community"
+
+        }
+
+        # --- Google Satellite (XYZ) Basemap ---
+        satellite_settings_2 = {
+            "basemap": {
+                "zmin": 0,
+                "zmax": 19,
+                "crs": "EPSG:3857",
+                "url": "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
+                "title": "Google Satellite"
+            },
+            "copyright": "Imagery ©2025 Google, Maxar Technologies"
+        }
+        # --- OpenStreetMap (XYZ) Basemap ---
+        osm_settings = {
+            "basemap": {
+                "zmin": 0,
+                "zmax": 19,
+                "crs": "EPSG:3857",
+                "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                "title": "OpenStreetMap"
+            },
+            "copyright": "© OpenStreetMap (and) contributors, CC-BY-SA"
         }
 
         scale_str = str(scale)
@@ -552,6 +580,27 @@ class MapCraftPlugin:
             QgsProject.instance().addMapLayer(wms_layer)
             return wms_layer, state_conf, scale_conf
 
+        elif basemap_type == "OpenStreetMap":
+            osm_conf = osm_settings["basemap"]
+            url = osm_conf["url"]
+            zmin = osm_conf["zmin"]
+            zmax = osm_conf["zmax"]
+            crs = osm_conf["crs"]
+            title = osm_conf["title"]
+
+            encoded_url = url.replace("=", "%3D").replace("&", "%26")
+            uri = f"type=xyz&url={encoded_url}&zmin={zmin}&zmax={zmax}&crs={crs}"
+
+            layer = QgsRasterLayer(uri, title, "wms")
+            if not layer.isValid():
+                print("MapCraft Plugin", "Could not load OpenStreetMap basemap.")
+                return None, None, None
+
+            layer.setOpacity(0.75)
+            QgsProject.instance().addMapLayer(layer)
+
+            return layer, osm_settings, None
+
         else:
             print("MapCraft Plugin", f"Unknown basemap type: {basemap_type}")
             return None, None, None
@@ -585,6 +634,67 @@ class MapCraftPlugin:
 
         legend_item.update()
 
+    def get_visible_layers_in_tree(self):
+        """
+                Creates the layer reference for the map.
+                """
+        visible_layers = []
+        shp_layers_ref = []
+
+        def collect_visible_layers(node):
+            if isinstance(node, QgsLayerTreeLayer):
+                if node.isVisible():
+                    layer = node.layer()
+                    visible_layers.append(layer)
+
+                    # Exclude WMS layers from the Reference
+                    if isinstance(layer, QgsRasterLayer) and 'wms' in layer.source().lower():
+                        return
+                    layer_path = layer.source()
+                    # Try to extract the layer name from the source string
+                    if "|layername=" in layer_path:
+                        layer_name = layer_path.split("|layername=")[-1]
+                    elif "layers=" in layer_path:
+                        return  # Skip WMS layers
+                    else:
+                        layer_name = layer.name()  # fallback
+                    shp_layers_ref.append(layer_name)
+
+            elif isinstance(node, QgsLayerTreeGroup):
+                for child in node.children():
+                    collect_visible_layers(child)
+
+        root = QgsProject.instance().layerTreeRoot()
+        collect_visible_layers(root)
+        return visible_layers, shp_layers_ref
+
+    def adjust_font_size_to_fit(self, label_item, text, max_width, min_font_size, default_font_size):
+        """
+        Reduces font size of a label until the text fits within max_width or reaches min_font_size.
+        """
+        font = label_item.font()
+        font.setPointSize(default_font_size)
+        fm = QFontMetricsF(font)
+        text_rect = fm.boundingRect(text)
+        text_width = text_rect.width()
+
+        while text_width > max_width and font.pointSize() > min_font_size:
+            font.setPointSize(font.pointSize() - 1)
+            fm = QFontMetricsF(font)
+            text_width = fm.width(text)
+
+        print("==== FONT ADJUST DEBUG ====")
+        print("Label ID:", label_item.id())
+        print("Final font size:", font.pointSize())
+        print("Text:", text)
+        print("Text width (px):", text_width)
+        print("Max allowed width (px):", max_width)
+        print("===========================")
+
+        label_item.setFont(font)
+        label_item.setText(text)
+        label_item.refresh()
+
     def run_map_generation(self):
         mode = self.mode_combo.currentText()
         if mode == "Automated":
@@ -611,7 +721,7 @@ class MapCraftPlugin:
         output_folder = self.pdf_path.text()
 
         today_name = datetime.today().strftime("%Y%m%d")
-        pdf_filename = f"{today_name}_Windpark_{project_name}_{Map_title}_{layout_size}"
+        pdf_filename = f"{today_name}_Windpark_{project_name}_{layout_size}"
         filename_base = os.path.join(output_folder, pdf_filename)
 
         if export_format == "PDF":
@@ -1015,32 +1125,50 @@ class MapCraftPlugin:
             copyright_text = conf_dict.get("copyright", "")
         elif basemap_type == "Satellite" and conf_dict:
             copyright_text = conf_dict.get("copyright", "")
+        elif basemap_type == "OpenStreetMap" and conf_dict:
+            copyright_text = conf_dict.get("copyright", "")
 
+        dpi_ = layout.renderContext().dpi()
         for item in layout.items():
             if item.type() == QgsLayoutItemRegistry.LayoutLabel:
+
                 if item.id() == 'label_proj':
                     item.setText(f"CRS: {projection}")
+                    font = item.font()
+                    font.setPointSize(10)
+                    item.setFont(font)
+                    item.refresh()
+
                 elif item.id() == 'label_creator':
                     item.setText(f"Karte erzeugt am {today} von {username}")
+
                 elif item.id() == 'label_title':
                     item.setText(f"{Map_title}")
+
                 elif item.id() == 'label_Windpark':
                     item.setText(f"Windpark {project_name}")
-                elif item.id() == 'label_ref':
-                    item.setText(f"Ref: {ref_text}")
-                elif item.id() == 'label_CR':
-                    item.setText(f"Hintergrund: ©{copyright_text}")
-                    if layout_size == "A4":
-                        font = item.font()
-                        font.setPointSize(3)
-                        item.setFont(font)
-                        item.refresh()
-                    else:
-                        font = item.font()
-                        font.setPointSize(4)
-                        item.setFont(font)
-                        item.refresh()
 
+                elif item.id() == 'label_ref':
+                    ref_label_text = f"Ref: {ref_text}"
+                    max_width = item.rect().width()
+                    max_width_px = max_width * dpi_ / 25.4
+                    if layout_size == "A3":
+                        self.adjust_font_size_to_fit(item, ref_label_text, max_width_px, min_font_size=2.5,
+                                                     default_font_size=5)
+                    else:
+                        self.adjust_font_size_to_fit(item, ref_label_text, max_width_px, min_font_size=2,
+                                                     default_font_size=4)
+
+                elif item.id() == 'label_CR':
+                    label_CR_text = f"Hintergrund: ©{copyright_text}"
+                    max_width = item.rect().width()
+                    max_width_px = max_width * dpi_ / 25.4
+                    if layout_size == "A3":
+                        self.adjust_font_size_to_fit(item, label_CR_text, max_width_px, min_font_size=2.5,
+                                                     default_font_size=4)
+                    else:
+                        self.adjust_font_size_to_fit(item, label_CR_text, max_width_px, min_font_size=2.5,
+                                                     default_font_size=3)
 
         # Export based on selected format
         exporter = QgsLayoutExporter(layout)
@@ -1095,7 +1223,7 @@ class MapCraftPlugin:
         output_folder = self.pdf_path.text()
 
         today_name = datetime.today().strftime("%Y%m%d")
-        pdf_filename = f"{today_name}_Windpark_{project_name}_{Map_title}_{layout_size}"
+        pdf_filename = f"{today_name}_Windpark_{project_name}_{layout_size}"
         filename_base = os.path.join(output_folder, pdf_filename)
 
         if export_format == "PDF":
@@ -1114,20 +1242,25 @@ class MapCraftPlugin:
         layout.initializeDefaults()
         layout.loadFromTemplate(document, QgsReadWriteContext())
 
-        # Get the first layer of the project
-        layers = list(QgsProject.instance().mapLayers().values())
-        layer = layers[0] # Select the first layer
+        root = QgsProject.instance().layerTreeRoot()
+
+        # Select the first active layer to set it as a center
+        def find_first_visible_layer(children):
+            for child in children:
+                if isinstance(child, QgsLayerTreeLayer) and child.isVisible():
+                    layer = child.layer()
+                    print(f"First visible layer: {layer.name()}")
+                    return layer
+                elif isinstance(child, QgsLayerTreeGroup):
+                    result = find_first_visible_layer(child.children())
+                    if result:
+                        return result
+            return None
+
+        layer = find_first_visible_layer(root.children())
+
 
         wms_layer, conf_dict, scale_conf = self.load_wms_layer(state_selected, scale, basemap_type)
-
-        # Move WMS layer to the bottom in Layer Tree
-        layer_tree = QgsProject.instance().layerTreeRoot()
-        wms_node = layer_tree.findLayer(wms_layer.id())
-        if wms_node:
-            wms_layer_ref = wms_node.layer()  # Keep reference to the QgsMapLayer
-            layer_tree.removeChildNode(wms_node)
-            new_wms_node = QgsLayerTreeLayer(wms_layer_ref)
-            layer_tree.insertChildNode(0, new_wms_node)
 
         # Map item
         map_item = next((item for item in layout.items() if isinstance(item, QgsLayoutItemMap) and item.id() == "Map"),
@@ -1146,26 +1279,16 @@ class MapCraftPlugin:
                               center.x() + map_width_m / 2, center.y() + map_height_m / 2)
         map_item.setExtent(extent)
 
-        # Organize layers: WMS at the bottom
-        all_layers = list(QgsProject.instance().mapLayers().values())
-        vector_layers = [l for l in all_layers if isinstance(l, QgsVectorLayer)]
-        wms_layers = [l for l in all_layers if isinstance(l, QgsRasterLayer) and 'wms' in l.source().lower()]
-        final_order = vector_layers + wms_layers
-        map_item.setLayers(final_order)
-
-        map_item.refresh()
-
         # Get only visible layers (including the WMS layer if visible)
-        layer_tree = QgsProject.instance().layerTreeRoot()
-        visible_layers = []
+        visible_layers, shp_layers_ref = self.get_visible_layers_in_tree()
 
-        for child in layer_tree.children():
-            if isinstance(child, QgsLayerTreeLayer) and child.isVisible():
-                visible_layers.append(child.layer())
+
+        print("Number of layers in REF: ", len(shp_layers_ref))
 
         # Layer ordering: WMS/raster layers at the bottom
         vector_layers = [l for l in visible_layers if isinstance(l, QgsVectorLayer)]
-        final_order = vector_layers + [wms_layer]
+        final_order = vector_layers + [wms_layer] # This part does the trick to send wms to the bottom
+
 
         map_item.setLayers(final_order)
         map_item.refresh()
@@ -1288,33 +1411,24 @@ class MapCraftPlugin:
             layer_tree = QgsProject.instance().layerTreeRoot()
 
             # Add only visible vector layers (skip WMS/raster/invisible)
-            for child in layer_tree.children():
-                if isinstance(child, QgsLayerTreeLayer) and child.isVisible():
-                    layer = child.layer()
-                    if isinstance(layer, QgsVectorLayer):
-                        root_group.addLayer(layer)
+            # Recursively add all visible vector layers (even inside groups)
+            def add_visible_vector_layers(node):
+                if isinstance(node, QgsLayerTreeLayer):
+                    if node.isVisible() and isinstance(node.layer(), QgsVectorLayer):
+                        root_group.addLayer(node.layer())
+                elif isinstance(node, QgsLayerTreeGroup):
+                    for child in node.children():
+                        add_visible_vector_layers(child)
 
+
+            add_visible_vector_layers(layer_tree)
 
             legend_item.refresh()
 
-            # Adjust font size based on number of legend entries
-            legend_item.attemptResize(QgsLayoutSize(55, 100))
-            self.adjust_legend_font_size(legend_item)
+            ## Adjust font size based on number of legend entries
+            #legend_item.attemptResize(QgsLayoutSize(55, 100))
+            #self.adjust_legend_font_size(legend_item)
 
-        # Create a list to be used a REF
-        shp_layers_ref = []
-        layer_tree = QgsProject.instance().layerTreeRoot()
-
-        for child in layer_tree.children():
-            if isinstance(child, QgsLayerTreeLayer) and child.isVisible():
-                layer = child.layer()
-                if isinstance(layer, QgsVectorLayer):
-                    layer_path = layer.source()
-                    layer_name = os.path.basename(layer_path)
-                    shp_layers_ref.append(layer_name)
-
-        print(len(shp_layers_ref))
-        print(shp_layers_ref)
 
         # Dynamic labels
         username = getpass.getuser()
@@ -1325,31 +1439,59 @@ class MapCraftPlugin:
             copyright_text = conf_dict.get("copyright", "")
         elif basemap_type == "Satellite" and conf_dict:
             copyright_text = conf_dict.get("copyright", "")
+        elif basemap_type == "OpenStreetMap" and conf_dict:
+            copyright_text = conf_dict.get("copyright", "")
 
+        dpi_ = layout.renderContext().dpi()
         for item in layout.items():
             if item.type() == QgsLayoutItemRegistry.LayoutLabel:
+
                 if item.id() == 'label_proj':
                     item.setText(f"CRS: {projection}")
+                    item.setText(f"CRS: {projection}")
+                    font = item.font()
+                    font.setPointSize(10)
+                    item.setFont(font)
+                    item.refresh()
+
                 elif item.id() == 'label_creator':
-                    item.setText(f"Map produced on {today} by {username}")
+                    item.setText(f"Karte erzeugt am {today} von {username}")
+
                 elif item.id() == 'label_title':
                     item.setText(f"{Map_title}")
+
                 elif item.id() == 'label_Windpark':
-                    item.setText(f"Windpark {project_name}")
-                elif item.id() == 'label_ref':
-                    item.setText(f"Ref: {ref_text}")
-                elif item.id() == 'label_CR':
-                    item.setText(f"Hintergrund: ©{copyright_text}")
-                    if layout_size == "A4":
-                        font = item.font()
-                        font.setPointSize(3)
-                        item.setFont(font)
-                        item.refresh()
+                    label_windpark_text = f"Windpark {project_name}"
+                    max_width = item.rect().width()
+                    max_width_px = max_width * dpi_ / 25.4
+                    if layout_size == "A3":
+                        self.adjust_font_size_to_fit(item, label_windpark_text, max_width_px, min_font_size=2,
+                                                     default_font_size=5)
                     else:
-                        font = item.font()
-                        font.setPointSize(4)
-                        item.setFont(font)
-                        item.refresh()
+                        self.adjust_font_size_to_fit(item, label_windpark_text, max_width_px, min_font_size=2.5,
+                                                     default_font_size=3)
+
+                elif item.id() == 'label_ref':
+                    ref_label_text = f"Ref: {ref_text}"
+                    max_width = item.rect().width()
+                    max_width_px = max_width * dpi_ / 25.4
+                    if layout_size == "A3":
+                        self.adjust_font_size_to_fit(item, ref_label_text, max_width_px, min_font_size=2.5,
+                                                     default_font_size=5)
+                    else:
+                        self.adjust_font_size_to_fit(item, ref_label_text, max_width_px, min_font_size=2,
+                                                     default_font_size=4)
+
+                elif item.id() == 'label_CR':
+                    label_CR_text = f"Hintergrund: ©{copyright_text}"
+                    max_width = item.rect().width()
+                    max_width_px = max_width * dpi_ / 25.4
+                    if layout_size == "A3":
+                        self.adjust_font_size_to_fit(item, label_CR_text, max_width_px, min_font_size=2.5,
+                                                     default_font_size=4)
+                    else:
+                        self.adjust_font_size_to_fit(item, label_CR_text, max_width_px, min_font_size=2.5,
+                                                     default_font_size=3)
 
         # Export based on selected format
         exporter = QgsLayoutExporter(layout)
@@ -1358,15 +1500,23 @@ class MapCraftPlugin:
             pdf_settings = QgsLayoutExporter.PdfExportSettings()
             result = exporter.exportToPdf(output_path, pdf_settings)
             if result == QgsLayoutExporter.Success:
-                self.iface.messageBar().pushSuccess('Success', 'PDF exported successfully!')
+                print('Success', 'PDF exported successfully!')
             else:
-                self.iface.messageBar().pushCritical('Error', 'PDF export failed.')
+                print('Error', 'PDF export failed.')
 
         elif export_format == "PNG":
             image_settings = QgsLayoutExporter.ImageExportSettings()
             image_settings.dpi = 300  # ✅ Set high resolution
             result = exporter.exportToImage(output_path, image_settings)
             if result == QgsLayoutExporter.Success:
-                self.iface.messageBar().pushSuccess('Success', 'PNG exported successfully!')
+                print('Success', 'PNG exported successfully!')
             else:
-                self.iface.messageBar().pushCritical('Error', 'PNG export failed.')
+                print('Error', 'PNG export failed.')
+
+        #  Remove WMS layers from canvas
+        QgsProject.instance().removeMapLayer(wms_layer)
+        iface.mapCanvas().refresh()
+
+
+
+
