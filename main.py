@@ -168,9 +168,9 @@ class MapCraftPlugin:
             pdf_layout = QHBoxLayout()
             self.pdf_path = QLineEdit()
             # self.pdf_path.setText("C:/Users/cfp29/Downloads/map")  # Deactivate
-            browse_pdf = QPushButton("Browse Folder")
+            browse_pdf = QPushButton("Browse folder")
             browse_pdf.clicked.connect(self.browse_pdf)
-            pdf_layout.addWidget(QLabel("PDF Output Folder:"))
+            pdf_layout.addWidget(QLabel("PDF output folder:"))
             pdf_layout.addWidget(self.pdf_path)
             pdf_layout.addWidget(browse_pdf)
             form_layout.addLayout(pdf_layout)
@@ -178,10 +178,10 @@ class MapCraftPlugin:
             # Format Selector
             self.format_combo = QComboBox()
             self.format_combo.addItems(["PDF", "PNG"])
-            form_layout.addWidget(QLabel("Export Format:"))
+            form_layout.addWidget(QLabel("Export format:"))
             form_layout.addWidget(self.format_combo)
 
-            self.keepLayersCheckBox = QCheckBox("Keep layers in QGIS after Map exporting")
+            self.keepLayersCheckBox = QCheckBox("Keep layers in QGIS after map exporting")
             form_layout.addWidget(self.keepLayersCheckBox)
 
             # Reset Button
@@ -203,9 +203,9 @@ class MapCraftPlugin:
                 "QGroupBox { background-color: white; border: 1px solid lightgray; border-radius: 5px; }")
 
             help_label = QLabel("""
-                <b>Description of Parameters</b><br><br><br>
+                <b>Description of parameters</b><br><br><br>
 
-                <b>Map Generation Mode</b> <i>(Required)</i> Select how the map will be created:<br>
+                <b>Map generation mode</b> <i>(Required)</i> Select how the map will be created:<br>
                 
                 <ul>
                     <li><b>Automatic:</b> Uses predefined symbology with minimal input.</li>
@@ -213,54 +213,54 @@ class MapCraftPlugin:
                     In Manual mode, users must upload their own shapefiles to define map content.</li>
                 </ul><br>
 
-                <b>Input Layers</b><br>
+                <b>Input layers</b><br>
                 <span style="color:red;">IMPORTANT:</span> All Shapefiles must be projected.<br>
                 <ul>
-                    <li><b>WTG Layout:</b> <i>(Required)</i> Wind Turbine Generator layout.<br>
+                    <li><b>WTG layout:</b> <i>(Required)</i> Wind Turbine Generator layout.<br>
                     <span style="color:red;">IMPORTANT:</span> This shapefile should be the one produced by the GIS team.<br>
                     The tool requires the fields [TRB_ID] and [LAYOUT] to generate map legends and labels. If these fields are missing, the tool will fail.</li><br>
 
-                    <li><b>WTG Buffer Layout:</b> <i>(Optional)</i> Shapefile representing a buffer area around the WTGs. If a Shapefile is provided, the buffer area distance must be also registered (e.g., 87.5, 90).</li><br>
+                    <li><b>WTG buffer Layout:</b> <i>(Optional)</i> Shapefile representing a buffer area around the WTGs. If a Shapefile is provided, the buffer area distance must be also registered (e.g., 87.5, 90).</li><br>
 
-                    <li><b>Site Boundary:</b> <i>(Optional)</i> Shapefile defining the project site boundary.</li><br>
+                    <li><b>Site boundary:</b> <i>(Optional)</i> Shapefile defining the project site boundary.</li><br>
 
-                    <li><b>Site Boundary Buffer:</b> <i>(Optional)</i> Shapefile defining a buffer around the site boundary. If a Shapefile is provided, the buffer area distance must be also registered (e.g., 87.5, 90).</li><br>
+                    <li><b>Site boundary buffer:</b> <i>(Optional)</i> Shapefile defining a buffer around the site boundary. If a Shapefile is provided, the buffer area distance must be also registered (e.g., 87.5, 90).</li><br>
                     
-                    <li><b>Wind Priority Area (Windvorranggebiet):</b> <i>(Optional)</i> A legally designated area in regional or land-use plans where wind energy has priority.</li><br>
+                    <li><b>Wind priority area (Windvorranggebiet):</b> <i>(Optional)</i> A legally designated area in regional or land-use plans where wind energy has priority.</li><br>
                     
-                    <li><b>Wind Potential Area (Potenzialfläche):</b> <i>(Optional)</i> Area that has been identified as suitable for wind energy based on different evaluations.</li>
+                    <li><b>Wind potential area (Potenzialfläche):</b> <i>(Optional)</i> Area that has been identified as suitable for wind energy based on different evaluations.</li>
                 </ul><br>
 
-                <b>Project Metadata</b><br>
+                <b>Project metadata</b><br>
                 <ul>
-                    <li><b>Project Name:</b> <i>(Required)</i> Name of the project (e.g., Winterlingen).</li><br>
-                    <li><b>Map Title:</b> <i>(Required)</i> Custom title to be displayed on the exported map.</li>
+                    <li><b>Project name:</b> <i>(Required)</i> Name of the project (e.g., Winterlingen).</li><br>
+                    <li><b>Map title:</b> <i>(Required)</i> Custom title to be displayed on the exported map.</li>
                 </ul><br>
 
-                <b>Map Settings</b><br>
+                <b>Map settings</b><br>
                 <ul>
-                    <li><b>Map Layout Size:</b> <i>(Required)</i> Select the paper size for the map layout (e.g., A3, A4).</li><br>
-                    <li><b>Select Base Map Type:</b> <i>(Required)</i> Select the background map to use (e.g., topographic, satellite).</li><br>
-                    <li><b>Select German State:</b> <i>(Required)</i> Select the federal state where the project is located. This determines which WMS basemap will be used.</li><br>
-                    <li><b>Map Scale:</b> <i>(Required)</i> Define the desired map scale (e.g., 1:25,000 or 1:50,000).</li>
+                    <li><b>Map layout size:</b> <i>(Required)</i> Select the paper size for the map layout (e.g., A3, A4).</li><br>
+                    <li><b>Select base map type:</b> <i>(Required)</i> Select the background map to use (e.g., topographic, satellite).</li><br>
+                    <li><b>Select german state:</b> <i>(Required)</i> Select the federal state where the project is located. This determines which WMS basemap will be used.</li><br>
+                    <li><b>Map scale:</b> <i>(Required)</i> Define the desired map scale (e.g., 1:25,000 or 1:50,000).</li>
                 </ul><br>
 
-                <b>Output Options</b><br>
+                <b>Output options</b><br>
                 <ul>
-                    <li><b>PDF Output Folder:</b> <i>(Required)</i> Select the folder where the exported map (PDF/PNG) will be saved.</li><br>
-                    <li><b>Export Format:</b> <i>(Required)</i> Select the format of the output file (PDF or PNG).</li>
+                    <li><b>PDF output folder:</b> <i>(Required)</i> Select the folder where the exported map (PDF/PNG) will be saved.</li><br>
+                    <li><b>Export format:</b> <i>(Required)</i> Select the format of the output file (PDF or PNG).</li>
                 </ul><br>
 
                 <b>Actions</b><br>
                 <ul>
-                    <li><b>Keep layers in QGIS after Map exporting:</b> Use this option if you want to retain the layers used to create the map in your QGIS project.:</b> Use this option if you want to retain the layers used in the QGIS project after exporting the map.</li><br>
+                    <li><b>Keep layers in QGIS after map exporting:</b> Use this option if you want to retain the layers used to create the map in your QGIS project.:</b> Use this option if you want to retain the layers used in the QGIS project after exporting the map.</li><br>
                     <li><b>Reset:</b> Clears all fields and selections in the form.</li><br>
                     <li><b>Run:</b> Starts the map generation process.</li>
                 </ul><br>
                 
                 <b>Need more help? Keine Sorgen</b><br>
                 <ul>
-                    <li><a href="https://vattenfall.sharepoint.com/sites/Wind_OnDpt_WNMX/GISTeam/SitePages/Home.aspx" style="color:blue;" target="_blank">Open SharePoint Documentation</a></li><br>
+                    <li><a href="https://vattenfall.sharepoint.com/sites/Wind_OnDpt_WNMX/MapsAndDocuments/GIS-Team-Map-Craft-Documentation.pdf" style="color:blue;" target="_blank">Open SharePoint Documentation</a></li><br>
                     <li><a href="https://emea01.safelinks.protection.outlook.com/?url=https%3A%2F%2Fapps.powerapps.com%2Fplay%2Fe%2Fdefault-f8be18a6-f648-4a47-be73-86d6c5c6604d%2Fa%2Fffaf49bb-9017-4ae2-843b-a1042eb8cf5f%3FtenantId%3Df8be18a6-f648-4a47-be73-86d6c5c6604d%26source%3Demail&data=05%7C02%7Cjosemanuel.mendozareyes%40vattenfall.de%7C22154ba212974807228108dd357c43a9%7Cf8be18a6f6484a47be7386d6c5c6604d%7C0%7C0%7C638725529994715332%7CUnknown%7CTWFpbGZsb3d8eyJFbXB0eU1hcGkiOnRydWUsIlYiOiIwLjAuMDAwMCIsIlAiOiJXaW4zMiIsIkFOIjoiTWFpbCIsIldUIjoyfQ%3D%3D%7C0%7C%7C%7C&sdata=rFa7XdY4gkeD7TfZfVM%2Fe20Xt5phu4FMNC4NV0j%2FdUY%3D&reserved=0" style="color:blue;" target="_blank">Report a Problem (GIS Ticket System)</a></li>
                 </ul>
             """)
@@ -1115,7 +1115,6 @@ class MapCraftPlugin:
                             child.setName("Potenzialfläche")
 
         # Dynamic Labels
-
         projection = WTG_layer.crs().description()
         today = datetime.today().strftime("%d/%m/%y")
         username = getpass.getuser()
@@ -1142,7 +1141,15 @@ class MapCraftPlugin:
 
                 elif item.id() == 'label_Windpark':
                     full_name = f"Windpark {project_name}"
+                    font = item.font()
+                    font.setBold(True)
+                    if layout_size == "A3":
+                        font.setPointSize(13)
+                    elif layout_size == "A4":
+                        font.setPointSize(10)
+                    item.setFont(font)
                     item.setText(full_name)
+
                     # if the name is too long, move the box up north
                     print(len(project_name))
                     if layout_size == "A3":
@@ -1162,16 +1169,37 @@ class MapCraftPlugin:
                             item.attemptMove(
                                 QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
 
-                elif item.id() == 'label_ref':
-                    ref_label_text = f"Ref: {ref_text}"
-                    max_width = item.rect().width()
-                    max_width_px = max_width * dpi_ / 25.4
+                elif item.id() == 'label_Vattenfall':
+                    font = item.font()
+
                     if layout_size == "A3":
-                        self.adjust_font_size_to_fit(item, ref_label_text, max_width_px, min_font_size=2.5,
-                                                     default_font_size=5)
-                    else:
-                        self.adjust_font_size_to_fit(item, ref_label_text, max_width_px, min_font_size=2,
-                                                     default_font_size=4)
+                        font.setPointSize(5)
+                    elif layout_size == "A4":
+                        font.setPointSize(3)
+                    item.setFont(font)
+                    item.setText("© Vattenfall Europe Windkraft GmbH 2025")
+
+                elif item.id() == 'label_address':
+                    font = item.font()
+
+                    if layout_size == "A3":
+                        font.setPointSize(5)
+                    elif layout_size == "A4":
+                        font.setPointSize(3.5)
+                    item.setFont(font)
+                    item.setText("Vattenfall Europe Windkraft GmbH, Amerigo-Vespucci-Platz 2 20457 Hamburg. Tel: +49 (0) 40 790 222 525")
+
+
+                elif item.id() == 'label_ref':
+                        ref_label_text = f"Ref: {ref_text}"
+                        max_width = item.rect().width()
+                        max_width_px = max_width * dpi_ / 25.4
+                        if layout_size == "A3":
+                            self.adjust_font_size_to_fit(item, ref_label_text, max_width_px, min_font_size=2.5,
+                                                         default_font_size=5)
+                        else:
+                            self.adjust_font_size_to_fit(item, ref_label_text, max_width_px, min_font_size=2,
+                                                         default_font_size=4)
 
                 elif item.id() == 'label_CR':
                     label_CR_text = f"Hintergrund: ©{copyright_text}"
@@ -1471,7 +1499,15 @@ class MapCraftPlugin:
 
                 elif item.id() == 'label_Windpark':
                     full_name = f"Windpark {project_name}"
+                    font = item.font()
+                    font.setBold(True)
+                    if layout_size == "A3":
+                        font.setPointSize(13)
+                    elif layout_size == "A4":
+                        font.setPointSize(10)
+                    item.setFont(font)
                     item.setText(full_name)
+                    
                     # if the name is too long, move the box up north
                     print(len(project_name))
                     if layout_size == "A3":
@@ -1490,6 +1526,27 @@ class MapCraftPlugin:
                             adjusted_y = current_pos.y() -3  # Keep Y position unchanged
                             item.attemptMove(
                                 QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
+                
+                
+                elif item.id() == 'label_Vattenfall':
+                    font = item.font()
+
+                    if layout_size == "A3":
+                        font.setPointSize(5)
+                    elif layout_size == "A4":
+                        font.setPointSize(3)
+                    item.setFont(font)
+                    item.setText("© Vattenfall Europe Windkraft GmbH 2025")
+
+                elif item.id() == 'label_address':
+                    font = item.font()
+
+                    if layout_size == "A3":
+                        font.setPointSize(5)
+                    elif layout_size == "A4":
+                        font.setPointSize(3.5)
+                    item.setFont(font)
+                    item.setText("Vattenfall Europe Windkraft GmbH, Amerigo-Vespucci-Platz 2 20457 Hamburg. Tel: +49 (0) 40 790 222 525")
 
 
                 elif item.id() == 'label_ref':
