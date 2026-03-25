@@ -12,7 +12,8 @@ from qgis.core import (
     QgsPrintLayout, QgsLayoutItemMap, QgsReadWriteContext, QgsRectangle,
     QgsLayoutExporter, QgsLayoutItemRegistry, QgsLineSymbol, QgsSingleSymbolRenderer,
     QgsLayoutItemScaleBar, QgsUnitTypes, QgsLayerTreeLayer, QgsLayoutSize, QgsFillSymbol,
-    QgsSimpleFillSymbolLayer, QgsSimpleLineSymbolLayer, QgsLayoutPoint, QgsLayerTreeGroup
+    QgsSimpleFillSymbolLayer, QgsSimpleLineSymbolLayer, QgsLayoutPoint, QgsLayerTreeGroup, QgsLegendStyle, QgsTextFormat,
+    Qgis, QgsLayoutMeasurement
 )
 from qgis.PyQt.QtXml import QDomDocument
 
@@ -154,7 +155,7 @@ class MapCraftPlugin:
 
             # State
             self.state_combo = QComboBox()
-            self.state_combo.addItems(["Baden-Württemberg", "Niedersachsen", "Rheinland-Pfalz", "Schleswig-Holstein"])
+            self.state_combo.addItems(["Baden-Württemberg", "Hessen", "Niedersachsen", "Mecklenburg-Vorpommern", "Rheinland-Pfalz", "Schleswig-Holstein"])
             form_layout.addWidget(QLabel("Select german state:"))
             form_layout.addWidget(self.state_combo)
 
@@ -407,7 +408,77 @@ class MapCraftPlugin:
                         "title": "DTK50 Color"
                     }
                 },
-                "copyright": "LGL-BW(2025) Datenlizenz Deutschland-Namensnennung-Version 2.0, www.lgl-bw.de"
+                "copyright": "LGL-BW(2026) Datenlizenz Deutschland-Namensnennung-Version 2.0, www.lgl-bw.de"
+            },
+            "Hessen": {
+                "scales": {
+                    "10000": {
+                        "wms_url": "https://www.gds-srv.hessen.de/cgi-bin/lika-services/ogc-free-maps.ows?",
+                        "layer_name": "he_pg10",
+                        "title": "DTK10 Hessen"
+                    },
+                    "15000": {
+                        "wms_url": "https://www.gds-srv.hessen.de/cgi-bin/lika-services/ogc-free-maps.ows?",
+                        "layer_name": "he_pg10",
+                        "title": "DTK15 Hessen"
+                    },
+                    "25000": {
+                        "wms_url": "https://www.gds-srv.hessen.de/cgi-bin/lika-services/ogc-free-maps.ows?",
+                        "layer_name": "he_dtk25",
+                        "title": "DTK25 Hessen"
+                    },
+                    "50000": {
+                        "wms_url": "https://www.gds-srv.hessen.de/cgi-bin/lika-services/ogc-free-maps.ows?",
+                        "layer_name": "he_dtk50",
+                        "title": "DTK50 Hessen"
+                    }
+                },
+                "copyright": "Hessische Verwaltung für Bodenmanagement und Geoinformation, 2026"
+            },
+            "Niedersachsen": {
+                "scales": {
+                    "10000": {
+                        "wms_url": "https://www.geobasisdaten.niedersachsen.de/wms/dtk25?",
+                        "layer_name": "DTK25",
+                        "title": "DTK25 NI"
+                    },
+                    "25000": {
+                        "wms_url": "https://www.geobasisdaten.niedersachsen.de/wms/dtk25?",
+                        "layer_name": "DTK25",
+                        "title": "DTK25 NI"
+                    },
+                    "50000": {
+                        "wms_url": "https://www.geobasisdaten.niedersachsen.de/wms/dtk50?",
+                        "layer_name": "DTK50",
+                        "title": "DTK50 NI"
+                    }
+                },
+                "copyright": "LGLN 2026"
+            },
+            "Mecklenburg-Vorpommern": {
+                "scales": {
+                    "10000": {
+                        "wms_url": "https://www.geodaten-mv.de/dienste/adv_dtk10?",
+                        "layer_name": "mv_dtk10",
+                        "title": "DTK10 MV"
+                    },
+                    "15000": {
+                        "wms_url": "https://www.geodaten-mv.de/dienste/adv_dtk10?",
+                        "layer_name": "mv_dtk10",
+                        "title": "DTK15 MV"
+                    },
+                    "25000": {
+                        "wms_url": "https://www.geodaten-mv.de/dienste/adv_dtk25?",
+                        "layer_name": "mv_dtk25",
+                        "title": "DTK25 MV"
+                    },
+                    "50000": {
+                        "wms_url": "https://www.geodaten-mv.de/dienste/adv_dtk50?",
+                        "layer_name": "mv_dtk50",
+                        "title": "DTK50 MV"
+                    }
+                },
+                "copyright": "GeoBasis-DE/MV, 2026, CC BY 4.0"
             },
             "Rheinland-Pfalz": {
                 "scales": {
@@ -430,34 +501,9 @@ class MapCraftPlugin:
                         "wms_url": "https://geo4.service24.rlp.de/wms/rp_dtk50.fcgi?",
                         "layer_name": "rp_dtk50",
                         "title": "DTK50 RLP"
-                    },
-                    "satellite": {
-                        "wms_url": "https://www.geoportal.rlp.de/mapbender/php/wms.php?layer_id=61675",
-                        "layer_name": "dop20",
-                        "title": "RLP DOP20"
                     }
                 },
-                "copyright": "GeoBasis-DE/LVermGeoRP (2005) dl-de/by-2-0"
-            },
-            "Niedersachsen": {
-                "scales": {
-                    "10000": {
-                        "wms_url": "https://www.geobasisdaten.niedersachsen.de/wms/dtk25?",
-                        "layer_name": "DTK25",
-                        "title": "DTK25 NI"
-                    },
-                    "25000": {
-                        "wms_url": "https://www.geobasisdaten.niedersachsen.de/wms/dtk25?",
-                        "layer_name": "DTK25",
-                        "title": "DTK25 NI"
-                    },
-                    "50000": {
-                        "wms_url": "https://www.geobasisdaten.niedersachsen.de/wms/dtk50?",
-                        "layer_name": "DTK50",
-                        "title": "DTK50 NI"
-                    }
-                },
-                "copyright": "LGLN 2025"
+                "copyright": "GeoBasis-DE/LVermGeoRP (2006) dl-de/by-2-0"
             },
             "Schleswig-Holstein": {
                 "scales": {
@@ -480,16 +526,12 @@ class MapCraftPlugin:
                         "wms_url": "https://service.gdi-sh.de/WMS_SH_DTK50_OpenGBD?",
                         "layer_name": "sh_dtk50_col",
                         "title": "DTK50 SH"
-                    },
-                    "satellite": {
-                        "wms_url": "https://dienste.gdi-sh.de/WMS_SH_DOP20col_OpenGBD?",
-                        "layer_name": "sh_dop20_col",
-                        "title": "DOP20 SH"
                     }
                 },
-                "copyright": "GeoBasis-DE/LVermGeo 2025 SH/CC BY 4.0"
+                "copyright": "GeoBasis-DE/LVermGeo 2026 SH/CC BY 4.0"
             }
         }
+
 
         # --- Global Satellite (XYZ) ESRI Basemap ---
         satellite_settings = {
@@ -513,7 +555,7 @@ class MapCraftPlugin:
                 "url": "https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}",
                 "title": "Google Satellite"
             },
-            "copyright": "Imagery ©2025 Google, Maxar Technologies"
+            "copyright": "Imagery 2026 Google, Maxar Technologies"
         }
         # --- OpenStreetMap (XYZ) Basemap ---
         osm_settings = {
@@ -524,7 +566,7 @@ class MapCraftPlugin:
                 "url": "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
                 "title": "OpenStreetMap"
             },
-            "copyright": "© OpenStreetMap (and) contributors, CC-BY-SA"
+            "copyright": "OpenStreetMap (and) contributors, CC-BY-SA"
         }
 
         scale_str = str(scale)
@@ -566,15 +608,35 @@ class MapCraftPlugin:
                                                      f"No topographic WMS for {state_selected} at scale {scale_str}.")
                 return None, None, None
 
-            wms_url = (
-                f"contextualWMSLegend=0&crs=EPSG:25832&dpiMode=7&featureCount=10"
-                f"&format=image/png&layers={scale_conf['layer_name']}&styles=&url={scale_conf['wms_url']}"
-            )
+            # Determine the correct EPSG for the state
+            # MV is usually 25833, others are 25832.
 
+            if state_selected == "Mecklenburg-Vorpommern":
+                auth_id = "EPSG:25833"
+                clean_url = scale_conf['wms_url'].strip('?')
+                wms_url = (
+                    f"crs=EPSG:25833&"
+                    f"dpiMode=7&"
+                    f"featureCount=10&"
+                    f"format=image/png&"
+                    f"layers={scale_conf['layer_name']}&"
+                    f"styles=&"
+                    f"tilePixelRatio=0&"  
+                    f"url={clean_url}"
+                )
+            else:
+                auth_id ="EPSG:25832"
+
+                wms_url = (
+                    f"contextualWMSLegend=0&crs={auth_id}&dpiMode=7&featureCount=10"
+                    f"&format=image/png&layers={scale_conf['layer_name']}&styles=&url={scale_conf['wms_url']}"
+                )
+
+            print(wms_url)
             wms_layer = QgsRasterLayer(wms_url, f"{state_selected} Basemap", "wms")
             if not wms_layer.isValid():
                 print("MapCraft Plugin",f"Could not load WMS for {state_selected} at scale {scale_str}. TRY LATER!")
-                return None, None, None
+                return None, state_conf, scale_conf
 
             wms_layer.setOpacity(0.6)
             QgsProject.instance().addMapLayer(wms_layer)
@@ -606,29 +668,31 @@ class MapCraftPlugin:
             return None, None, None
 
     def adjust_legend_font_size(self, legend_item, max_items=5, base_size=6, min_size=6):
-        # max_items:	Max number of legend entries before font starts shrinking
-        # base_size:	Default font size when entries are ≤ max_items
-        # min_size:	    Minimum font size allowed even if many entries
-
-        from qgis.core import QgsLegendStyle
-
+        """
+        max_items:	Max number of legend entries before font starts shrinking
+        base_size:	Default font size when entries are ≤ max_items
+        min_size:	    Minimum font size allowed even if many entries
+        """
+        from qgis.core import QgsLegendStyle, Qgis
         if not legend_item:
             return
 
-        # Count the total number of symbol entries
         model = legend_item.model()
         root_group = model.rootGroup()
+        # Count children correctly
         count = sum(len(group.children()) for group in root_group.children())
 
-        # Reduce font size if too many entries
         if count > max_items:
-            scale_factor = max(min_size, base_size - (count - max_items) // 2)
+            # Subtle reduction: decrease by 0.5 per extra item, but floor at min_size
+            scale_factor = max(min_size, base_size - ((count - max_items) * 0.5))
         else:
             scale_factor = base_size
 
-        # Apply font size to legend styles
-        for style in [QgsLegendStyle.Group, QgsLegendStyle.Subgroup, QgsLegendStyle.SymbolLabel]:
+        # The modern way to apply style fonts to legends
+        styles = [QgsLegendStyle.Group, QgsLegendStyle.Subgroup, QgsLegendStyle.SymbolLabel]
+        for style in styles:
             font = legend_item.styleFont(style)
+            font.setFamily("Arial")  # Force safety
             font.setPointSize(scale_factor)
             legend_item.setStyleFont(style, font)
 
@@ -672,25 +736,33 @@ class MapCraftPlugin:
         """
         Reduces font size of a label until the text fits within max_width or reaches min_font_size.
         """
-        font = label_item.font()
+        # 1. Get the current Text Format (Modern QGIS)
+        text_format = label_item.textFormat()
+        font = text_format.font()
+
+        # Force a safe font family to avoid the "load from data" error
+        font.setFamily("Arial")
         font.setPointSize(default_font_size)
+
+        # 2. Measurement logic
         fm = QFontMetricsF(font)
         text_width = fm.width(text)
 
-        while text_width > max_width and font.pointSize() > min_font_size:
-            font.setPointSize(font.pointSize() - 1)
+        # Note: Using font.pointSize() > min_font_size might fail if sizes are floats
+        current_size = float(default_font_size)
+        while text_width > max_width and current_size > min_font_size:
+            current_size -= 0.5  # Use smaller steps for smoother fitting
+            font.setPointSize(current_size)
             fm = QFontMetricsF(font)
             text_width = fm.width(text)
 
-        # print("==== FONT ADJUST DEBUG ====")
-        # print("Label ID:", label_item.id())
-        # print("Final font size:", font.pointSize())
-        # print("Text:", text)
-        # print("Text width (px):", text_width)
-        # print("Max allowed width (px):", max_width)
-        # print("===========================")
+        # 3. Apply changes back to the Format object
+        text_format.setFont(font)
+        text_format.setSize(current_size)
+        text_format.setSizeUnit(Qgis.RenderUnit.Points)
 
-        label_item.setFont(font)
+        # 4. Update the Label Item
+        label_item.setTextFormat(text_format)
         label_item.setText(text)
         label_item.refresh()
 
@@ -743,8 +815,12 @@ class MapCraftPlugin:
             print("Missing Input", "Please enter the site boundary buffer size.")
             return
 
+        if state_selected == "Mecklenburg-Vorpommern":
+            template_name = f"Übersichskarte_{layout_size}_UTM33.qpt"
+        else:
+            template_name = f"Übersichskarte_{layout_size}.qpt"
 
-        layout_path = os.path.join(self.plugin_dir, f"Übersichskarte_{layout_size}.qpt")
+        layout_path = os.path.join(self.plugin_dir, template_name)
         style_path = os.path.join(self.plugin_dir, "WEA.qml")
 
         map_layers = []
@@ -921,9 +997,23 @@ class MapCraftPlugin:
                 shp_layers_ref.append(layer_name_4)
                 map_layers.append(priority_area_layer)
 
+        # print(f"UI State Selected: '{state_selected}'")
+        # print(f"UI Scale Selected: {scale}")
+        # print(f"UI Basemap Type: '{basemap_type}'")
+
         # Load the WMS sever
         wms_layer, conf_dict, scale_conf = self.load_wms_layer(state_selected, scale, basemap_type)
+        # print(f"Returned conf_dict: {conf_dict}")
+        # print(f"Returned wms_layer valid: {wms_layer.isValid() if wms_layer else 'None'}")
+        #
+        # if conf_dict:
+        #     print(f"Copyright found in dict: {conf_dict.get('copyright', 'KEY MISSING')}")
+        # else:
+        #     print("ALERT: conf_dict is EMPTY. Check if 'state_selected' matches your dictionary keys exactly.")
+        # print("---------------------")
         map_layers.append(wms_layer)
+
+
 
         # Load Layout
         with open(layout_path, 'r') as f:
@@ -1053,10 +1143,8 @@ class MapCraftPlugin:
                 # Get the width of the scale bar in layout units (mm)
                 scale_bar_width_mm = scale_bar_item.rect().width()
 
-
             # === LEGEND SETUP ===
             legend_item = layout.itemById("symbology")  # Make sure your layout legend ID is 'symbology'
-
             if legend_item and map_item:
                 legend_item.setLinkedMap(map_item)
 
@@ -1068,20 +1156,18 @@ class MapCraftPlugin:
                 root_group = legend_model.rootGroup()
                 root_group.removeAllChildren()
 
-                # Add only the SHP layer manually
+                # Add WTG layer manually
                 root_group.addLayer(WTG_layer)
 
                 # Rename the legend label for the SHP WTG_layer
                 for child in root_group.findLayers():
                     if child.layer() == WTG_layer:
                         if layout_value is not None:
-                            child.setName(f"WEA - Neuplanung ({layout_value})")  # Custom name shown in legend
+                            child.setName(f"WEA - Neuplanung ({layout_value})")
                         else:
-                            child.setName(f"WEA - Neuplanung")  # Custom name shown in legend
+                            child.setName("WEA - Neuplanung")
 
-                legend_item.refresh()
-
-                # Add optional layer if available
+                # Add optional layer if available and rename accordingly
                 if WTG_buff_layer:
                     root_group.addLayer(WTG_buff_layer)
                     for child in root_group.findLayers():
@@ -1090,11 +1176,13 @@ class MapCraftPlugin:
                             if layout_buff_size:
                                 name = f"{name} ({layout_buff_size} m)"
                             child.setName(name)
+
                 if Site_Bdry_layer:
                     root_group.addLayer(Site_Bdry_layer)
                     for child in root_group.findLayers():
                         if child.layer() == Site_Bdry_layer:
                             child.setName("Projektfläche")
+
                 if Site_Bdry_buff_layer:
                     root_group.addLayer(Site_Bdry_buff_layer)
                     for child in root_group.findLayers():
@@ -1103,18 +1191,31 @@ class MapCraftPlugin:
                             if Site_Bdry_buff_size:
                                 name = f"{name} ({Site_Bdry_buff_size} m)"
                             child.setName(name)
+
                 if priority_area_layer:
                     root_group.addLayer(priority_area_layer)
                     for child in root_group.findLayers():
                         if child.layer() == priority_area_layer:
                             child.setName("Windvorranggebiet")
+
                 if potential_area_layer:
                     root_group.addLayer(potential_area_layer)
                     for child in root_group.findLayers():
                         if child.layer() == potential_area_layer:
                             child.setName("Potenzialfläche")
 
+                # Set font size for legend labels if layout is A4
+                if layout_size == "A4":
+                    label_style = legend_item.style(QgsLegendStyle.SymbolLabel)
+                    label_font = label_style.font()
+                    label_font.setPointSize(7)
+                    label_style.setFont(label_font)
+                    legend_item.setStyle(QgsLegendStyle.SymbolLabel, label_style)
+
+                legend_item.refresh()
+
         # Dynamic Labels
+        copyright_text = ""
         projection = WTG_layer.crs().description()
         today = datetime.today().strftime("%d/%m/%y")
         username = getpass.getuser()
@@ -1131,10 +1232,54 @@ class MapCraftPlugin:
             if item.type() == QgsLayoutItemRegistry.LayoutLabel:
 
                 if item.id() == 'label_proj':
-                    item.setText(f"CRS: {projection}")
+                    full_name = f"CRS: {projection}"
+                    font = item.font()
+
+                    if layout_size == "A3":
+                        font.setPointSize(10)
+                    elif layout_size == "A4":
+                        font.setPointSize(7)
+                    item.setFont(font)
+                    item.setText(full_name)
+
+                elif item.id() == 'label_druck':
+                    if layout_size == "A3":
+                        full_name = f"Druck: A3"
+                        font = item.font()
+                        font = item.font()
+                        font.setPointSize(10)
+                        item.setFont(font)
+                        item.setText(full_name)
+                    elif layout_size == "A4":
+                        full_name = f"Druck: A4"
+                        font = item.font()
+                        font = item.font()
+                        font.setPointSize(7)
+                        item.setFont(font)
+                        item.setText(full_name)
+
+
+                elif item.id() == 'label_Maßstab':
+                    full_name = f"Maßstab:"
+                    font = item.font()
+                    if layout_size == "A3":
+                        font.setPointSize(10)
+                    elif layout_size == "A4":
+                        font.setPointSize(7)
+                    item.setFont(font)
+                    item.setText(full_name)
+
 
                 elif item.id() == 'label_creator':
-                    item.setText(f"Karte erzeugt am {today} von {username}")
+                    full_name = f"Karte erzeugt am {today} von {username}"
+                    font = item.font()
+
+                    if layout_size == "A3":
+                        font.setPointSize(10)
+                    elif layout_size == "A4":
+                        font.setPointSize(7)
+                    item.setFont(font)
+                    item.setText(full_name)
 
                 elif item.id() == 'label_title':
                     item.setText(f"{Map_title}")
@@ -1177,7 +1322,7 @@ class MapCraftPlugin:
                     elif layout_size == "A4":
                         font.setPointSize(3)
                     item.setFont(font)
-                    item.setText("© Vattenfall Europe Windkraft GmbH 2025")
+                    item.setText("(c) Vattenfall Europe Windkraft GmbH 2026")
 
                 elif item.id() == 'label_address':
                     font = item.font()
@@ -1185,7 +1330,7 @@ class MapCraftPlugin:
                     if layout_size == "A3":
                         font.setPointSize(5)
                     elif layout_size == "A4":
-                        font.setPointSize(3.5)
+                        font.setPointSizeF(3.5)
                     item.setFont(font)
                     item.setText("Vattenfall Europe Windkraft GmbH, Amerigo-Vespucci-Platz 2 20457 Hamburg. Tel: +49 (0) 40 790 222 525")
 
@@ -1202,7 +1347,9 @@ class MapCraftPlugin:
                                                          default_font_size=4)
 
                 elif item.id() == 'label_CR':
-                    label_CR_text = f"Hintergrund: ©{copyright_text}"
+                    label_CR_text = f"Hintergrund: (c){copyright_text}"
+                    # new_font = QFont("Arial")
+                    # item.setFont(new_font)
                     max_width = item.rect().width()
                     max_width_px = max_width * dpi_ / 25.4
                     if layout_size == "A3":
@@ -1273,7 +1420,13 @@ class MapCraftPlugin:
         else:
             output_path = os.path.join(self.pdf_path.text(), f"{filename_base}.png")
 
-        layout_path = os.path.join(self.plugin_dir, f"Übersichskarte_{layout_size}.qpt")
+
+        if state_selected == "Mecklenburg-Vorpommern":
+            template_name = f"Übersichskarte_{layout_size}_UTM33.qpt"
+        else:
+            template_name = f"Übersichskarte_{layout_size}.qpt"
+
+        layout_path = os.path.join(self.plugin_dir, template_name)
 
         # Load template
         with open(layout_path, 'r') as f:
@@ -1283,6 +1436,7 @@ class MapCraftPlugin:
         layout = QgsPrintLayout(QgsProject.instance())
         layout.initializeDefaults()
         layout.loadFromTemplate(document, QgsReadWriteContext())
+        
 
         root = QgsProject.instance().layerTreeRoot()
 
@@ -1439,11 +1593,18 @@ class MapCraftPlugin:
             #scale_bar_width_mm = scale_bar_item.rect().width()
 
         # Legend setup
-
         legend_item = layout.itemById("symbology")
         if legend_item and map_item:
             legend_item.setLinkedMap(map_item)
             legend_item.setAutoUpdateModel(False)
+
+            if layout_size == "A4":
+                font = QFont()
+                font.setPointSize(7)
+                legend_item.setStyleFont(QgsLegendStyle.Title, font)
+                legend_item.setStyleFont(QgsLegendStyle.Group, font)
+                legend_item.setStyleFont(QgsLegendStyle.Subgroup, font)
+                legend_item.setStyleFont(QgsLegendStyle.SymbolLabel, font)
 
             legend_model = legend_item.model()
             root_group = legend_model.rootGroup()
@@ -1473,6 +1634,7 @@ class MapCraftPlugin:
 
 
         # Dynamic labels
+        copyright_text = ""
         username = getpass.getuser()
         today = datetime.today().strftime("%d/%m/%y")
         projection = layer.crs().description()
@@ -1489,10 +1651,52 @@ class MapCraftPlugin:
             if item.type() == QgsLayoutItemRegistry.LayoutLabel:
 
                 if item.id() == 'label_proj':
-                    item.setText(f"CRS: {projection}")
+                    full_name = f"CRS: {projection}"
+                    font = item.font()
+
+                    if layout_size == "A3":
+                        font.setPointSize(10)
+                    elif layout_size == "A4":
+                        font.setPointSize(7)
+                    item.setFont(font)
+                    item.setText(full_name)
+
+                elif item.id() == 'label_druck':
+                    if layout_size == "A3":
+                        full_name = f"Druck: A3"
+                        font = item.font()
+                        font = item.font()
+                        font.setPointSize(10)
+                        item.setFont(font)
+                        item.setText(full_name)
+                    elif layout_size == "A4":
+                        full_name = f"Druck: A4"
+                        font = item.font()
+                        font = item.font()
+                        font.setPointSize(7)
+                        item.setFont(font)
+                        item.setText(full_name)
+
+                elif item.id() == 'label_Maßstab':
+                    full_name = f"Maßstab:"
+                    font = item.font()
+                    if layout_size == "A3":
+                        font.setPointSize(10)
+                    elif layout_size == "A4":
+                        font.setPointSize(7)
+                    item.setFont(font)
+                    item.setText(full_name)
 
                 elif item.id() == 'label_creator':
-                    item.setText(f"Karte erzeugt am {today} von {username}")
+                    full_name = f"Karte erzeugt am {today} von {username}"
+                    font = item.font()
+
+                    if layout_size == "A3":
+                        font.setPointSize(10)
+                    elif layout_size == "A4":
+                        font.setPointSize(7)
+                    item.setFont(font)
+                    item.setText(full_name)
 
                 elif item.id() == 'label_title':
                     item.setText(f"{Map_title}")
@@ -1507,7 +1711,7 @@ class MapCraftPlugin:
                         font.setPointSize(10)
                     item.setFont(font)
                     item.setText(full_name)
-                    
+
                     # if the name is too long, move the box up north
                     print(len(project_name))
                     if layout_size == "A3":
@@ -1526,8 +1730,8 @@ class MapCraftPlugin:
                             adjusted_y = current_pos.y() -3  # Keep Y position unchanged
                             item.attemptMove(
                                 QgsLayoutPoint(adjusted_x, adjusted_y, QgsUnitTypes.LayoutMillimeters))
-                
-                
+
+
                 elif item.id() == 'label_Vattenfall':
                     font = item.font()
 
@@ -1536,7 +1740,7 @@ class MapCraftPlugin:
                     elif layout_size == "A4":
                         font.setPointSize(3)
                     item.setFont(font)
-                    item.setText("© Vattenfall Europe Windkraft GmbH 2025")
+                    item.setText("(c) Vattenfall Europe Windkraft GmbH 2026")
 
                 elif item.id() == 'label_address':
                     font = item.font()
@@ -1544,7 +1748,7 @@ class MapCraftPlugin:
                     if layout_size == "A3":
                         font.setPointSize(5)
                     elif layout_size == "A4":
-                        font.setPointSize(3.5)
+                        font.setPointSizeF(3.5)
                     item.setFont(font)
                     item.setText("Vattenfall Europe Windkraft GmbH, Amerigo-Vespucci-Platz 2 20457 Hamburg. Tel: +49 (0) 40 790 222 525")
 
@@ -1561,7 +1765,9 @@ class MapCraftPlugin:
                                                      default_font_size=4)
 
                 elif item.id() == 'label_CR':
-                    label_CR_text = f"Hintergrund: ©{copyright_text}"
+                    label_CR_text = f"Hintergrund: (c){copyright_text}"
+                    # new_font = QFont("Arial")
+                    # item.setFont(new_font)
                     max_width = item.rect().width()
                     max_width_px = max_width * dpi_ / 25.4
                     if layout_size == "A3":
